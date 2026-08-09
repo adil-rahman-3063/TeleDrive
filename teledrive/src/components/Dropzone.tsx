@@ -49,10 +49,29 @@ export default function Dropzone({
         setCurrentFileText(`Uploading ${i + 1}/${totalFiles} — ${file.name}`);
         setProgressPercent(0);
 
+        let progressInterval: any = null;
+        let currentFakePercent = 0;
+
         // Upload single file and track progress
         await uploadFile(phoneNumber!, folderId, file, (percent) => {
-          setProgressPercent(Math.round(percent));
+          // Map client-to-local-server upload to 0% - 70%
+          const mappedPercent = Math.round(percent * 0.7);
+          setProgressPercent(mappedPercent);
+          currentFakePercent = mappedPercent;
+
+          // Once it hits 70%, start slowly incrementing to simulate backend->Telegram upload
+          if (percent >= 99 && !progressInterval) {
+            progressInterval = setInterval(() => {
+              currentFakePercent = Math.min(99, currentFakePercent + 1);
+              setProgressPercent(currentFakePercent);
+            }, 1000);
+          }
         });
+
+        if (progressInterval) {
+          clearInterval(progressInterval);
+        }
+        setProgressPercent(100);
       }
 
       setUploadState("done");

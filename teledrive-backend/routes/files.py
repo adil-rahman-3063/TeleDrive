@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import FileResponse, StreamingResponse
 from fastapi import BackgroundTasks
 import os
@@ -25,8 +25,29 @@ def get_files(user_id: str, folder_id: str):
     return data
 
 # 🔥 Download file using file_id
+async def bg_cache_download(user_id: str, channel_id, message_id, cache_path: str):
+    tmp_path = cache_path + ".tmp"
+    try:
+        if os.path.exists(cache_path) or os.path.exists(tmp_path):
+            return
+        client = await get_client_and_connect(user_id)
+        message = await client.get_messages(channel_id, ids=message_id)
+        if message and message.media:
+            os.makedirs(os.path.dirname(cache_path), exist_ok=True)
+            await message.download_media(file=tmp_path)
+            if os.path.exists(tmp_path):
+                os.rename(tmp_path, cache_path)
+    except Exception as e:
+        print("BG Cache Download failed:", e)
+        if os.path.exists(tmp_path):
+            try:
+                os.remove(tmp_path)
+            except Exception:
+                pass
+
+# 🔥 Download file using file_id (Range-compliant streaming + background caching)
 @router.get("/download/{user_id}/{file_id}")
-async def download_file(user_id: str, file_id: str):
+async def download_file(user_id: str, file_id: str, request: Request, background_tasks: BackgroundTasks):
     record = fetch_one("SELECT * FROM files WHERE id = ?", (file_id,))
     if not record:
         raise HTTPException(status_code=404, detail="File not found")
@@ -48,42 +69,55 @@ async def download_file(user_id: str, file_id: str):
         except ValueError:
             pass
 
-    client = await get_client_and_connect(user_id)
+    # Start caching in background so future plays/seeks are instant from disk
+    background_tasks.add_task(bg_cache_download, user_id, channel_id, message_id, cache_path)
 
+    client = await get_client_and_connect(user_id)
     message = await client.get_messages(channel_id, ids=message_id)
     if not message or not message.media:
         raise HTTPException(status_code=404, detail="Media not found on Telegram")
 
-    # Fast Streaming + Background Cache Writing
-    async def stream_generator():
-        os.makedirs(CACHE_DIR, exist_ok=True)
-        tmp_path = cache_path + ".tmp"
+    # Parse Range Header
+    range_header = request.headers.get("Range")
+    start_byte = 0
+    total_size = record["file_size"]
+    end_byte = total_size - 1
+
+    status_code = 200
+    if range_header:
         try:
-            # We open the tmp file and write chunks as we stream them
-            with open(tmp_path, "wb") as f:
-                async for chunk in client.iter_download(message.media):
-                    f.write(chunk)
-                    yield chunk
-            # Once fully downloaded without errors, rename to final cache path
-            if os.path.exists(tmp_path):
-                os.rename(tmp_path, cache_path)
-        except Exception as err:
-            print("STREAM ERROR:", err)
-            # Remove partial/corrupt file
-            if os.path.exists(tmp_path):
-                try:
-                    os.remove(tmp_path)
-                except Exception:
-                    pass
-            raise err
+            range_val = range_header.replace("bytes=", "").strip()
+            parts = range_val.split("-")
+            if parts[0]:
+                start_byte = int(parts[0])
+            if parts[1]:
+                end_byte = int(parts[1])
+            status_code = 206
+        except Exception:
+            pass
+
+    content_length = end_byte - start_byte + 1
+
+    async def stream_generator():
+        # Stream chunks starting at the requested byte offset from Telegram
+        async for chunk in client.iter_download(
+            message.media,
+            offset=start_byte,
+            request_size=128 * 1024, # 128KB chunks
+            limit=content_length
+        ):
+            yield chunk
 
     headers = {
         "Accept-Ranges": "bytes",
-        "Content-Length": str(record["file_size"]),
+        "Content-Length": str(content_length),
     }
+    if range_header:
+        headers["Content-Range"] = f"bytes {start_byte}-{end_byte}/{total_size}"
 
     return StreamingResponse(
         stream_generator(),
+        status_code=status_code,
         media_type=record.get("mime_type", "application/octet-stream"),
         headers=headers
     )

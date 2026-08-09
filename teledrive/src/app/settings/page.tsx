@@ -5,7 +5,7 @@ import { useRouter, usePathname } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/components/Toast";
 import TopNav from "@/components/TopNav";
-import { getUserStats, setChannel, setDownloadPath, UserStats } from "@/services/api";
+import { getUserStats, setChannel, setDownloadPath, selectDirectory, UserStats } from "@/services/api";
 import Footer from "@/components/Footer";
 
 export default function SettingsPage() {
@@ -63,6 +63,21 @@ export default function SettingsPage() {
       fetchStats();
     } catch (err: any) {
       showToast(`Failed to update download path: ${err.message || err}`, "error");
+    }
+  };
+
+  const handleBrowseFolder = async () => {
+    try {
+      showToast("Opening folder picker dialog on your computer...", "info");
+      const res = await selectDirectory();
+      if (res.status === "success" && res.path) {
+        setDownloadPathInput(res.path);
+        showToast(`Folder selected: ${res.path}`, "success");
+      } else if (res.status === "cancelled") {
+        showToast("Folder selection cancelled.", "warning");
+      }
+    } catch (err: any) {
+      showToast(`Failed to open folder picker: ${err.message || err}`, "error");
     }
   };
 
@@ -264,6 +279,20 @@ export default function SettingsPage() {
                         outline: "none"
                       }}
                     />
+                    <button 
+                      className="btn btn-ghost" 
+                      onClick={handleBrowseFolder}
+                      style={{ 
+                        margin: 0, 
+                        padding: "10px 18px", 
+                        fontSize: "13px", 
+                        background: "rgba(255, 255, 255, 0.05)",
+                        border: "1px solid rgba(255, 255, 255, 0.1)",
+                        color: "#fff"
+                      }}
+                    >
+                      Browse...
+                    </button>
                     <button 
                       className="btn btn-primary" 
                       onClick={handleSaveDownloadPath}

@@ -192,3 +192,24 @@ async def set_download_path(user_id: str, path: str):
         return {"status": "success", "download_path": path}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/auth/select-directory")
+def select_directory():
+    try:
+        import tkinter as tk
+        from tkinter import filedialog
+        
+        root = tk.Tk()
+        root.withdraw()
+        root.attributes('-topmost', True)
+        
+        selected_path = filedialog.askdirectory(title="Select Download Folder")
+        root.destroy()
+        
+        if selected_path:
+            selected_path = os.path.abspath(selected_path)
+            return {"status": "success", "path": selected_path}
+        return {"status": "cancelled", "path": None}
+    except Exception as e:
+        print("Folder picker dialog failed:", e)
+        raise HTTPException(status_code=500, detail=f"Failed to open native dialog: {str(e)}")

@@ -286,3 +286,13 @@ export async function clearCompletedUploads(phone: string): Promise<any> {
   });
   return res.json();
 }
+
+export async function selectDirectory(): Promise<{ status: "success" | "cancelled"; path: string | null }> {
+  const res = await fetch(`${BACKEND_URL}/auth/select-directory`, {
+    method: "POST"
+  });
+  if (!res.ok) {
+    throw new Error("Failed to open native folder picker");
+  }
+  return res.json();
+}

@@ -71,11 +71,15 @@ export async function checkAuthStatus(phone: string): Promise<boolean> {
     const res = await fetch(`${BACKEND_URL}/auth/status?user_id=${encodedPhone}`, { signal: AbortSignal.timeout(3000) });
     if (res.ok) {
       const data = await res.json();
+      if (data.detail) {
+        console.warn("Backend auth check returned error, retaining session:", data.detail);
+        return true;
+      }
       return data.is_logged_in === true;
     }
-    return false;
+    return true; // Retain session on server errors (e.g. 500)
   } catch {
-    return false;
+    return true; // Retain session on network fetch failures/timeouts
   }
 }
 
@@ -282,5 +286,13 @@ export async function getFileDownloadProgress(fileId: string): Promise<{ progres
   if (!res.ok) {
     throw new Error("Failed to get download progress");
   }
+  return res.json();
+}
+
+export async function moveFile(phone: string, fileId: string, folderId: string | null) {
+  const dest = folderId === null ? "root" : folderId;
+  const res = await fetch(`${BACKEND_URL}/files/${phone}/${fileId}/move?new_folder_id=${dest}`, {
+    method: "PUT"
+  });
   return res.json();
 }

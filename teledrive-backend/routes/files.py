@@ -172,3 +172,60 @@ def rename_file(user_id: str, file_id: str, new_name: str):
         
     file = fetch_one("SELECT * FROM files WHERE id = ?", (file_id,))
     return {"status": "renamed", "file": file}
+
+
+# 🔥 Sync files from Telegram channel into root folder
+@router.post("/sync/{user_id}")
+async def sync_telegram_channel(user_id: str):
+    try:
+        from telegram_client import normalize_phone
+        user_id = normalize_phone(user_id)
+        
+        user_record = fetch_one("SELECT channel_id FROM users WHERE phone = ?", (user_id,))
+        if not user_record or not user_record.get("channel_id"):
+            raise HTTPException(status_code=400, detail="No Telegram channel connected.")
+            
+        channel_id = user_record["channel_id"]
+        if channel_id != "me":
+            try:
+                channel_id = int(channel_id)
+            except ValueError:
+                pass
+                
+        client = await get_client_and_connect(user_id)
+        
+        synced_count = 0
+        async for message in client.iter_messages(channel_id):
+            if message.media:
+                # Check if message ID is already synced
+                exists = fetch_one(
+                    "SELECT id FROM files WHERE user_id = ? AND tg_message_id = ?",
+                    (user_id, message.id)
+                )
+                if not exists:
+                    # Use Telethon helper
+                    file_helper = message.file
+                    if file_helper:
+                        file_name = file_helper.name
+                        if not file_name:
+                            if message.photo:
+                                file_name = f"photo_{message.id}.jpg"
+                            else:
+                                file_name = f"file_{message.id}"
+                                
+                        file_size = file_helper.size or 0
+                        mime_type = file_helper.mime_type or "application/octet-stream"
+                        
+                        # Insert into SQLite root folder (folder_id=None)
+                        new_id = str(uuid.uuid4())
+                        execute_db(
+                            "INSERT INTO files (id, folder_id, tg_message_id, file_name, file_size, mime_type, user_id, deleted_at) VALUES (?, NULL, ?, ?, ?, ?, ?, NULL)",
+                            (new_id, message.id, file_name, file_size, mime_type, user_id)
+                        )
+                        synced_count += 1
+                        
+        return {"status": "success", "synced_count": synced_count}
+    except Exception as e:
+        import traceback
+        print("SYNC ERROR:", traceback.format_exc())
+        raise HTTPException(status_code=500, detail=str(e))

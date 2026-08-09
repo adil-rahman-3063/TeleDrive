@@ -266,3 +266,13 @@ export async function getUserStats(phone: string): Promise<UserStats> {
   const res = await fetch(`${BACKEND_URL}/auth/user-stats?user_id=${encodeURIComponent(phone)}`);
   return res.json();
 }
+
+export async function syncTelegramChannel(phone: string): Promise<{ synced_count: number }> {
+  const res = await fetch(`${BACKEND_URL}/sync/${encodeURIComponent(phone)}`, {
+    method: "POST"
+  });
+  if (!res.ok) {
+    throw new Error("Failed to sync Telegram channel");
+  }
+  return res.json();
+}

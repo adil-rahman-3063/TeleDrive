@@ -8,6 +8,7 @@ import TopNav from "@/components/TopNav";
 import CollectionCard from "@/components/CollectionCard";
 import MediaViewer from "@/components/MediaViewer";
 import Dropzone from "@/components/Dropzone";
+import Footer from "@/components/Footer";
 import { 
   getFolders, 
   getFiles, 
@@ -1100,6 +1101,7 @@ export default function CollectionsPage() {
           </div>
         </div>
       )}
+      <Footer />
     </>
   );
 }

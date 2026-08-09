@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { sendOtpCode, verifyOtpCode, setChannel } from "@/services/api";
+import Footer from "@/components/Footer";
 
 export default function LoginPage() {
   const { isLoggedIn, login, backendOnline } = useAuth();
@@ -374,6 +375,7 @@ export default function LoginPage() {
           ✦ Runs entirely on your machine — nothing leaves localhost except your media, into your own channels
         </div>
       </div>
+      <Footer />
     </div>
   );
 }

@@ -6,6 +6,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/components/Toast";
 import TopNav from "@/components/TopNav";
 import { getUserStats, setChannel, UserStats } from "@/services/api";
+import Footer from "@/components/Footer";
 
 export default function SettingsPage() {
   const {
@@ -26,7 +27,7 @@ export default function SettingsPage() {
   const router = useRouter();
 
   const { showToast } = useToast();
-  const [activeSettingsPanel, setActiveSettingsPanel] = useState<"content" | "channels" | "appearance" | "account" | "storage">("content");
+  const [activeSettingsPanel, setActiveSettingsPanel] = useState<"content" | "channels" | "appearance" | "account" | "storage" | "creator">("content");
 
   // Modal state for channel input
   const [showChannelModal, setShowChannelModal] = useState(false);
@@ -166,6 +167,15 @@ export default function SettingsPage() {
                   <path d="M4 7h16M4 12h16M4 17h10" />
                 </svg>
                 Storage & cache
+              </button>
+              <button
+                className={activeSettingsPanel === "creator" ? "active" : ""}
+                onClick={() => setActiveSettingsPanel("creator")}
+              >
+                <svg viewBox="0 0 24 24">
+                  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z" />
+                </svg>
+                Creator & Support
               </button>
             </div>
           </div>
@@ -366,6 +376,85 @@ export default function SettingsPage() {
                 )}
               </div>
             )}
+
+            {/* Creator Panel */}
+            {activeSettingsPanel === "creator" && (
+              <div className="settings-panel active" style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
+                <div>
+                  <div className="card-label">Creator</div>
+                  <h2 style={{ fontSize: "20px", marginBottom: "16px" }}>Meet the developer</h2>
+                  <div style={{ display: "flex", alignItems: "center", gap: "20px" }}>
+                    <img 
+                      src="/profile.jpg" 
+                      alt="Adil Rahiman" 
+                      style={{ 
+                        width: "80px", 
+                        height: "80px", 
+                        borderRadius: "50%", 
+                        objectFit: "cover",
+                        border: "2px solid rgba(255, 255, 255, 0.1)"
+                      }} 
+                    />
+                    <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                      <b style={{ fontSize: "18px", color: "#fff" }}>Adil Rahiman</b>
+                      <span style={{ fontSize: "13px", color: "var(--muted)" }}>Full Stack Developer & Open Source Creator</span>
+                      <a 
+                        href="https://adilrahman.cc" 
+                        target="_blank" 
+                        rel="noopener noreferrer" 
+                        style={{ 
+                          fontSize: "13px", 
+                          color: "#0a84ff", 
+                          textDecoration: "none", 
+                          fontWeight: 500,
+                          marginTop: "4px"
+                        }}
+                      >
+                        portfolio: adilrahman.cc
+                      </a>
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ borderTop: "1px solid rgba(255, 255, 255, 0.05)", paddingTop: "20px" }}>
+                  <div className="card-label">Support Project</div>
+                  <h2 style={{ fontSize: "20px", marginBottom: "8px" }}>Donate & Support</h2>
+                  <p className="desc" style={{ color: "var(--muted)", marginBottom: "16px" }}>
+                    If TeleDrive is helping you save storage and backup your files, consider supporting the development!
+                  </p>
+                  
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: "30px", alignItems: "flex-start" }}>
+                    <div style={{ display: "flex", flexDirection: "column", gap: "8px", alignItems: "center", background: "rgba(255, 255, 255, 0.02)", padding: "16px", borderRadius: "12px", border: "1px solid rgba(255, 255, 255, 0.05)" }}>
+                      <img 
+                        src="/GooglePay_QR.png" 
+                        alt="UPI Payment QR Code" 
+                        style={{ width: "160px", height: "160px", borderRadius: "8px", objectFit: "contain" }} 
+                      />
+                      <span style={{ fontSize: "12px", color: "var(--muted)", fontWeight: 500 }}>UPI QR Code (Google Pay)</span>
+                    </div>
+
+                    <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+                      <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                        <span style={{ fontSize: "11px", color: "var(--muted)", textTransform: "uppercase", fontWeight: 700 }}>PayPal Email</span>
+                        <b style={{ color: "#fff", fontSize: "15px" }}>adilrahman3063@gmail.com</b>
+                      </div>
+                      
+                      <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                        <span style={{ fontSize: "11px", color: "var(--muted)", textTransform: "uppercase", fontWeight: 700 }}>Creator Portfolio</span>
+                        <a 
+                          href="https://adilrahman.cc" 
+                          target="_blank" 
+                          rel="noopener noreferrer" 
+                          style={{ color: "#0a84ff", textDecoration: "none", fontWeight: 500, fontSize: "15px" }}
+                        >
+                          adilrahman.cc
+                        </a>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -389,6 +478,7 @@ export default function SettingsPage() {
           </div>
         </div>
       )}
+      <Footer />
     </>
   );
 }

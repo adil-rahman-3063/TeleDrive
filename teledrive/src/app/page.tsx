@@ -6,6 +6,7 @@ import { useAuth } from "@/hooks/useAuth";
 import TopNav from "@/components/TopNav";
 import Dropzone from "@/components/Dropzone";
 import { getFolders, getFiles } from "@/services/api";
+import Footer from "@/components/Footer";
 
 export default function DashboardPage() {
   const { isLoggedIn, phoneNumber, loading, isDarkMode, toggleTheme, backendOnline } = useAuth();
@@ -189,6 +190,7 @@ export default function DashboardPage() {
           </div>
         </div>
       </div>
+      <Footer />
     </>
   );
 }

@@ -150,6 +150,33 @@ export default function CollectionsPage() {
     }
   }, [isLoggedIn, phoneNumber, activeFolder, viewingTrash, loading, backendOnline]);
 
+  // Periodic background sync every 60 seconds to index files uploaded directly to Telegram
+  useEffect(() => {
+    if (!phoneNumber || viewingTrash || loading || !isLoggedIn || !backendOnline) return;
+
+    const interval = setInterval(async () => {
+      try {
+        const res = await syncTelegramChannel(phoneNumber);
+        if (res.synced_count > 0) {
+          showToast(`Background Sync: Found ${res.synced_count} new files in Telegram!`, "success");
+          
+          // Re-fetch directory structure
+          const parentId = activeFolder ? activeFolder.id : null;
+          const foldersList = await getFolders(phoneNumber, parentId);
+          const currentFolderId = activeFolder ? activeFolder.id : "root";
+          const filesList = await getFiles(phoneNumber, currentFolderId);
+          
+          setFolders(foldersList || []);
+          setFiles(filesList || []);
+        }
+      } catch (err) {
+        console.error("Background sync failed:", err);
+      }
+    }, 60000);
+
+    return () => clearInterval(interval);
+  }, [phoneNumber, viewingTrash, loading, isLoggedIn, backendOnline, activeFolder]);
+
   if (loading || !isLoggedIn) {
     return null;
   }

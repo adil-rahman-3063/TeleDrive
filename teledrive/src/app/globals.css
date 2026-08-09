@@ -541,7 +541,7 @@ body {
   letter-spacing: 0.03em;
   outline: none;
   transition: border-color .2s, box-shadow .2s;
-  background: #fff;
+  background: var(--paper);
   color: var(--ink);
 }
 
@@ -567,7 +567,7 @@ body {
   border: 1.5px solid var(--line);
   outline: none;
   transition: border-color .2s, transform .18s;
-  background: #fff;
+  background: var(--paper);
   color: var(--ink);
 }
 

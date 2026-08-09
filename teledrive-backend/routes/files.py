@@ -28,16 +28,49 @@ def get_files(user_id: str, folder_id: str):
     CACHE_DIR = custom_path if custom_path else "local_cache"
     
     for file in data:
-        file["is_cached"] = True
+        cache_filename = f"{file['id']}_{file['file_name']}"
+        cache_path = os.path.join(CACHE_DIR, cache_filename)
+        file["is_cached"] = os.path.exists(cache_path)
         
     return data
 
-# 🔥 Download file using file_id (Option A - Direct range-compliant streaming from Telegram)
+# 🔥 Download file using file_id (background caching)
+async def bg_cache_download(user_id: str, channel_id, message_id, cache_path: str):
+    tmp_path = cache_path + ".tmp"
+    try:
+        if os.path.exists(cache_path) or os.path.exists(tmp_path):
+            return
+        client = await get_client_and_connect(user_id)
+        message = await client.get_messages(channel_id, ids=message_id)
+        if message and message.media:
+            os.makedirs(os.path.dirname(cache_path), exist_ok=True)
+            await message.download_media(file=tmp_path)
+            if os.path.exists(tmp_path):
+                os.rename(tmp_path, cache_path)
+    except Exception as e:
+        print("BG Cache Download failed:", e)
+        if os.path.exists(tmp_path):
+            try:
+                os.remove(tmp_path)
+            except Exception:
+                pass
+
+# 🔥 Download file using file_id (Range-compliant streaming + background caching)
 @router.get("/download/{user_id}/{file_id}")
-async def download_file(user_id: str, file_id: str, request: Request):
+async def download_file(user_id: str, file_id: str, request: Request, background_tasks: BackgroundTasks):
     record = fetch_one("SELECT * FROM files WHERE id = ?", (file_id,))
     if not record:
         raise HTTPException(status_code=404, detail="File not found")
+
+    user_record = fetch_one("SELECT download_path FROM users WHERE phone = ?", (user_id,))
+    custom_path = user_record.get("download_path") if user_record else None
+    CACHE_DIR = custom_path if custom_path else "local_cache"
+
+    cache_filename = f"{file_id}_{record['file_name']}"
+    cache_path = os.path.join(CACHE_DIR, cache_filename)
+
+    if os.path.exists(cache_path):
+        return FileResponse(cache_path)
 
     message_id = record["tg_message_id"]
     channel_id = record.get("channel_id")
@@ -50,6 +83,9 @@ async def download_file(user_id: str, file_id: str, request: Request):
             channel_id = int(channel_id)
         except ValueError:
             pass
+
+    # Start caching in background so future requests load instantly from disk
+    background_tasks.add_task(bg_cache_download, user_id, channel_id, message_id, cache_path)
 
     client = await get_client_and_connect(user_id)
     message = await client.get_messages(channel_id, ids=message_id)

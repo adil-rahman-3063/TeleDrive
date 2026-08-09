@@ -294,6 +294,9 @@ export default function CollectionsPage() {
               prevFiles.map(f => f.id === file.id ? { ...f, is_cached: true } : f)
             );
             clearInterval(intervals[file.id]);
+          } else if (progressData.status === "not_started") {
+            // Stop polling idle files to prevent terminal flooding
+            clearInterval(intervals[file.id]);
           }
         } catch (err) {
           console.error("Error polling image download progress:", err);

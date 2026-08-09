@@ -276,3 +276,11 @@ export async function syncTelegramChannel(phone: string): Promise<{ synced_count
   }
   return res.json();
 }
+
+export async function getFileDownloadProgress(fileId: string): Promise<{ progress: number; status: "cached" | "downloading" | "not_started" }> {
+  const res = await fetch(`${BACKEND_URL}/download-progress/${fileId}`);
+  if (!res.ok) {
+    throw new Error("Failed to get download progress");
+  }
+  return res.json();
+}

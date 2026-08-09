@@ -1,8 +1,10 @@
-"use client";
+  "use client";
 
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
+import { getFileDownloadProgress } from "@/services/api";
 
 interface MediaFile {
+  id?: string;
   name: string;
   grad: string;
   video: boolean;
@@ -27,6 +29,10 @@ export default function MediaViewer({
   onIndexChange,
   onDelete,
 }: MediaViewerProps) {
+  const [progressInfo, setProgressInfo] = useState<{ progress: number; status: string } | null>(null);
+
+  const currentFile = files[currentIndex];
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (!isOpen) return;
@@ -42,9 +48,41 @@ export default function MediaViewer({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isOpen, currentIndex, files.length, onIndexChange, onClose]);
 
-  if (!isOpen || files.length === 0) return null;
+  useEffect(() => {
+    setProgressInfo(null);
+    if (!isOpen || !currentFile || !currentFile.video || !currentFile.id) return;
 
-  const currentFile = files[currentIndex];
+    let active = true;
+    let timer: NodeJS.Timeout;
+
+    const checkProgress = async () => {
+      try {
+        const res = await getFileDownloadProgress(currentFile.id!);
+        if (!active) return;
+        setProgressInfo({ progress: res.progress, status: res.status });
+        
+        if (res.status === "cached" || res.progress >= 100) {
+          setTimeout(() => {
+            if (active) setProgressInfo(null);
+          }, 1500);
+          return;
+        }
+
+        timer = setTimeout(checkProgress, 1000);
+      } catch (err) {
+        console.error("Failed to fetch download progress:", err);
+      }
+    };
+
+    checkProgress();
+
+    return () => {
+      active = false;
+      clearTimeout(timer);
+    };
+  }, [isOpen, currentIndex, currentFile?.id]);
+
+  if (!isOpen || files.length === 0) return null;
 
   const handleDownload = () => {
     if (currentFile.url) {
@@ -100,12 +138,38 @@ export default function MediaViewer({
         <div className="vf-corner br"></div>
         <div className="viewer-media" style={{ background: currentFile.grad, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", width: "100%", height: "100%" }}>
           {currentFile.video ? (
-            <video 
-              src={currentFile.url} 
-              controls 
-              autoPlay 
-              style={{ maxWidth: "100%", maxHeight: "100%", outline: "none", zIndex: 5 }} 
-            />
+            <div style={{ position: "relative", width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <video 
+                src={currentFile.url} 
+                controls 
+                autoPlay 
+                style={{ maxWidth: "100%", maxHeight: "100%", outline: "none", zIndex: 5 }} 
+              />
+              {progressInfo && progressInfo.status === "downloading" && (
+                <div style={{ 
+                  position: "absolute", 
+                  bottom: "80px", 
+                  left: "50%", 
+                  transform: "translateX(-50%)", 
+                  background: "rgba(10, 10, 12, 0.85)", 
+                  padding: "10px 18px", 
+                  borderRadius: "20px", 
+                  border: "1px solid rgba(255, 255, 255, 0.08)",
+                  display: "flex", 
+                  alignItems: "center", 
+                  gap: "10px", 
+                  zIndex: 10,
+                  boxShadow: "0 8px 32px rgba(0,0,0,0.5)"
+                }}>
+                  <svg className="spin" viewBox="0 0 24 24" style={{ width: "16px", height: "16px", stroke: "#0a84ff", fill: "none" }}>
+                    <circle cx="12" cy="12" r="10" strokeWidth="3" strokeDasharray="30 10" />
+                  </svg>
+                  <span style={{ fontSize: "12.5px", color: "#fff", fontWeight: 500 }}>
+                    Buffering from Telegram: {progressInfo.progress}%
+                  </span>
+                </div>
+              )}
+            </div>
           ) : (
             currentFile.url && (
               <img 

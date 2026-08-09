@@ -338,6 +338,7 @@ export default function CollectionsPage() {
     }
 
     return {
+      id: file.id,
       name: file.file_name,
       grad: grads[i % grads.length],
       video: isVideo,

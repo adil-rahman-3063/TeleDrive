@@ -1920,6 +1920,44 @@ svg {
 }
 
 /* ───────────────────────────────────────────────
+   Dropzone Square Mode
+─────────────────────────────────────────────── */
+.dropzone-square {
+  aspect-ratio: 1 / 1;
+  width: 100%;
+  max-width: 280px;
+  min-height: 280px !important;
+  display: flex;
+  flex-direction: column;
+  padding: 20px !important;
+}
+
+.dropzone-square .dropzone {
+  margin-top: 10px;
+  padding: 16px;
+}
+
+.dropzone-square .vf-corner {
+  display: none;
+}
+
+.dropzone-square .dz-sub {
+  display: none;
+}
+
+.dropzone-square .plus-btn {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+}
+
+.dropzone-square .dz-title {
+  font-size: 13.5px;
+  text-align: center;
+}
+
+
+/* ───────────────────────────────────────────────
    Search & Filter Controls
 ─────────────────────────────────────────────── */
 .search-controls {

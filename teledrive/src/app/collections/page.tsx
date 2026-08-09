@@ -491,7 +491,8 @@ export default function CollectionsPage() {
                 </div>
               </>
             ) : (
-              <>
+              <div style={activeFolder ? { display: "flex", gap: "24px", alignItems: "flex-start", width: "100%" } : {}}>
+                <div style={activeFolder ? { flex: 1, minWidth: 0 } : {}}>
                 {/* Folder Grid */}
                 <div style={{ marginBottom: "24px" }}>
                   {!hasFolders && !activeFolder ? (
@@ -595,12 +596,7 @@ export default function CollectionsPage() {
                   )}
                 </div>
 
-                {/* Dropzone inside active collection */}
-                {activeFolder && (
-                  <div style={{ marginBottom: "24px" }}>
-                    <Dropzone onUploadComplete={loadData} />
-                  </div>
-                )}
+
 
                 {/* Active Files Grid */}
                 {(activeFolder || hasFiles) && (
@@ -714,7 +710,13 @@ export default function CollectionsPage() {
                 )}
               </div>
             )}
-          </>
+            </div>
+            {activeFolder && (
+              <div style={{ flexShrink: 0, width: "280px", position: "sticky", top: "24px" }}>
+                <Dropzone onUploadComplete={loadData} folderId={String(activeFolder.id)} square={true} />
+              </div>
+            )}
+          </div>
         )}
       </div>
     )}

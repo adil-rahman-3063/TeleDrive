@@ -4,7 +4,15 @@ import React, { useState, useRef, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { uploadFile, getFolders, Folder } from "@/services/api";
 
-export default function Dropzone({ onUploadComplete }: { onUploadComplete?: () => void }) {
+export default function Dropzone({ 
+  onUploadComplete, 
+  folderId = null,
+  square = false
+}: { 
+  onUploadComplete?: () => void;
+  folderId?: string | null;
+  square?: boolean;
+}) {
   const { phoneNumber } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
   
@@ -68,8 +76,12 @@ export default function Dropzone({ onUploadComplete }: { onUploadComplete?: () =
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0 || !phoneNumber) return;
-    setPendingFiles(files);
-    setShowLocationModal(true);
+    if (folderId) {
+      processUpload(files, folderId);
+    } else {
+      setPendingFiles(files);
+      setShowLocationModal(true);
+    }
   };
 
   const triggerBrowse = () => {
@@ -89,8 +101,12 @@ export default function Dropzone({ onUploadComplete }: { onUploadComplete?: () =
     const files = e.dataTransfer.files;
     if (!files || files.length === 0) return;
 
-    setPendingFiles(files);
-    setShowLocationModal(true);
+    if (folderId) {
+      processUpload(files, folderId);
+    } else {
+      setPendingFiles(files);
+      setShowLocationModal(true);
+    }
   };
 
   const handleConfirmLocation = () => {
@@ -107,9 +123,9 @@ export default function Dropzone({ onUploadComplete }: { onUploadComplete?: () =
   };
 
   return (
-    <div className="card home-upload">
-      <div className="card-label">Add media</div>
-      <h2 style={{ fontSize: "19px" }}>Just drop a file</h2>
+    <div className={`card home-upload ${square ? "dropzone-square" : ""}`}>
+      {!square && <div className="card-label">Add media</div>}
+      {!square && <h2 style={{ fontSize: "19px" }}>Just drop a file</h2>}
       
       <input
         type="file"

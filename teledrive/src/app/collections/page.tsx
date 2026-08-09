@@ -200,9 +200,14 @@ export default function CollectionsPage() {
     setDownloadItems(itemsToDownload);
     setShowDownloadProgress(true);
 
-    itemsToDownload.forEach(async (item) => {
+    itemsToDownload.forEach((item) => {
       try {
-        fetch(`${BACKEND_URL}/download/${phoneNumber}/${item.id}`).catch(() => {});
+        const link = document.createElement("a");
+        link.href = `${BACKEND_URL}/download/${phoneNumber}/${item.id}`;
+        link.setAttribute("download", item.name);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
       } catch (err) {
         console.error("Failed to initiate download for:", item.name);
       }

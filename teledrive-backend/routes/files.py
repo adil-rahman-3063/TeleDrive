@@ -80,7 +80,7 @@ async def download_file(user_id: str, file_id: str, request: Request):
         async for chunk in client.iter_download(
             message.media,
             offset=start_byte,
-            request_size=256 * 1024, # 256KB chunks for direct streaming throughput
+            request_size=512 * 1024, # 512KB chunks for direct streaming throughput
             limit=content_length
         ):
             yield chunk

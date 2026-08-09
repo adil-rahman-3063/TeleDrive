@@ -59,11 +59,18 @@ async def upload_file(
         file_size = os.path.getsize(temp_path)
         mime_type = file.content_type or "application/octet-stream"
 
-        # Upload to Telegram with original quality preference toggling
-        message = await client.send_file(channel_id, temp_path, force_document=original_quality)
+        # Upload to Telegram with original quality preference toggling (with robust document fallback)
+        try:
+            message = await client.send_file(channel_id, temp_path, force_document=original_quality)
+        except Exception as upload_err:
+            print(f"Standard upload failed, falling back to force_document=True: {upload_err}")
+            message = await client.send_file(channel_id, temp_path, force_document=True)
 
         # Delete temp file
-        os.remove(temp_path)
+        try:
+            os.remove(temp_path)
+        except Exception:
+            pass
 
         # Save metadata in SQLite
         new_id = str(uuid.uuid4())

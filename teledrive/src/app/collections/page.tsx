@@ -870,24 +870,26 @@ export default function CollectionsPage() {
                                 loading="lazy"
                               />
                             )}
-                            {isVideo && autoplayVideos && isHovered ? (
-                              <video 
-                                src={fileUrl} 
-                                autoPlay 
-                                muted 
-                                loop 
-                                playsInline 
-                                style={{ width: "100%", height: "100%", objectFit: "cover", position: "absolute", top: 0, left: 0, zIndex: 2 }} 
-                              />
-                            ) : isVideo ? (
+                            {isVideo && (
                               <video 
                                 src={fileUrl} 
                                 preload="metadata"
                                 muted
                                 playsInline
-                                style={{ width: "100%", height: "100%", objectFit: "cover", position: "absolute", top: 0, left: 0 }} 
+                                loop
+                                style={{ width: "100%", height: "100%", objectFit: "cover", position: "absolute", top: 0, left: 0, zIndex: isHovered ? 2 : 1 }} 
+                                ref={(el) => {
+                                  if (el) {
+                                    if (autoplayVideos && isHovered) {
+                                      el.play().catch(() => {});
+                                    } else {
+                                      el.pause();
+                                      el.currentTime = 0;
+                                    }
+                                  }
+                                }}
                               />
-                            ) : null}
+                            )}
                             {isVideo && (
                               <div className="vid-badge" style={{ zIndex: 3 }}>
                                 <svg viewBox="0 0 24 24">

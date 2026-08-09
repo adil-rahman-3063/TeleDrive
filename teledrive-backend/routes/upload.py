@@ -1,7 +1,10 @@
 from fastapi import APIRouter, UploadFile, File, Form, HTTPException
+from fastapi.responses import StreamingResponse
 from typing import Optional
 import uuid
 import os
+import json
+import asyncio
 from database import fetch_one, execute_db
 from telegram_client import get_client_and_connect
 
@@ -59,31 +62,74 @@ async def upload_file(
         file_size = os.path.getsize(temp_path)
         mime_type = file.content_type or "application/octet-stream"
 
-        # Upload to Telegram with original quality preference toggling (with robust document fallback)
-        try:
-            message = await client.send_file(channel_id, temp_path, force_document=original_quality)
-        except Exception as upload_err:
-            print(f"Standard upload failed, falling back to force_document=True: {upload_err}")
-            message = await client.send_file(channel_id, temp_path, force_document=True)
+        async def event_generator():
+            try:
+                queue = asyncio.Queue()
 
-        # Delete temp file
-        try:
-            os.remove(temp_path)
-        except Exception:
-            pass
+                def progress_callback(current, total):
+                    percent = (current / total) * 100
+                    queue.put_nowait(f"progress:{percent:.2f}\n")
 
-        # Save metadata in SQLite
-        new_id = str(uuid.uuid4())
-        execute_db(
-            "INSERT INTO files (id, folder_id, tg_message_id, file_name, file_size, mime_type, user_id, deleted_at) VALUES (?, ?, ?, ?, ?, ?, ?, NULL)",
-            (new_id, folder_id, message.id, file.filename, file_size, mime_type, user_id)
-        )
+                async def do_upload():
+                    try:
+                        msg = await client.send_file(
+                            channel_id, 
+                            temp_path, 
+                            force_document=original_quality,
+                            progress_callback=progress_callback
+                        )
+                        queue.put_nowait(msg)
+                    except Exception as upload_err:
+                        print(f"Standard upload failed, falling back to force_document=True: {upload_err}")
+                        try:
+                            msg = await client.send_file(
+                                channel_id, 
+                                temp_path, 
+                                force_document=True,
+                                progress_callback=progress_callback
+                            )
+                            queue.put_nowait(msg)
+                        except Exception as err:
+                            queue.put_nowait(err)
 
-        return {
-            "message_id": message.id,
-            "file_name": file.filename,
-            "folder_id": folder_id
-        }
+                # Run upload in background task
+                upload_task = asyncio.create_task(do_upload())
+
+                while not upload_task.done() or not queue.empty():
+                    try:
+                        item = await asyncio.wait_for(queue.get(), timeout=0.1)
+                        if isinstance(item, str):
+                            yield item
+                        elif isinstance(item, Exception):
+                            raise item
+                        else:
+                            # Finished! Save metadata to SQLite
+                            new_id = str(uuid.uuid4())
+                            execute_db(
+                                "INSERT INTO files (id, folder_id, tg_message_id, file_name, file_size, mime_type, user_id, deleted_at) VALUES (?, ?, ?, ?, ?, ?, ?, NULL)",
+                                (new_id, folder_id, item.id, file.filename, file_size, mime_type, user_id)
+                            )
+                            result = {
+                                "message_id": item.id,
+                                "file_name": file.filename,
+                                "folder_id": folder_id
+                            }
+                            yield f"result:{json.dumps(result)}\n"
+                    except asyncio.TimeoutError:
+                        continue
+
+            except Exception as e:
+                yield f"error:{str(e)}\n"
+            finally:
+                # Delete temp file
+                try:
+                    if os.path.exists(temp_path):
+                        os.remove(temp_path)
+                except Exception:
+                    pass
+
+        return StreamingResponse(event_generator(), media_type="text/plain")
+
     except Exception as e:
         import traceback
         error_msg = traceback.format_exc()

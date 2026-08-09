@@ -158,41 +158,59 @@ export async function uploadFile(
   file: File,
   onProgress?: (progress: number) => void
 ): Promise<any> {
-  return new Promise((resolve, reject) => {
-    const xhr = new XMLHttpRequest();
-    const formData = new FormData();
-    formData.append("user_id", phone);
-    if (folderId) {
-      formData.append("folder_id", folderId);
-    }
-    formData.append("file", file);
+  const formData = new FormData();
+  formData.append("user_id", phone);
+  if (folderId) {
+    formData.append("folder_id", folderId);
+  }
+  formData.append("file", file);
 
-    xhr.open("POST", `${BACKEND_URL}/upload`);
-
-    if (xhr.upload && onProgress) {
-      xhr.upload.onprogress = (event) => {
-        if (event.lengthComputable) {
-          const percentComplete = (event.loaded / event.total) * 100;
-          onProgress(percentComplete);
-        }
-      };
-    }
-
-    xhr.onload = () => {
-      if (xhr.status >= 200 && xhr.status < 300) {
-        try {
-          resolve(JSON.parse(xhr.responseText));
-        } catch {
-          resolve(xhr.responseText);
-        }
-      } else {
-        reject(new Error(`Upload failed with status ${xhr.status}: ${xhr.statusText}`));
-      }
-    };
-
-    xhr.onerror = () => reject(new Error("Network error during upload"));
-    xhr.send(formData);
+  const res = await fetch(`${BACKEND_URL}/upload`, {
+    method: "POST",
+    body: formData,
   });
+
+  if (!res.ok) {
+    const errText = await res.text();
+    throw new Error(`Upload failed: ${errText}`);
+  }
+
+  const reader = res.body?.getReader();
+  if (!reader) {
+    throw new Error("No response body stream reader available");
+  }
+
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let lastResult = null;
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split("\n");
+    buffer = lines.pop() || "";
+
+    for (const line of lines) {
+      if (!line.trim()) continue;
+      if (line.startsWith("progress:")) {
+        const percent = parseFloat(line.substring(9));
+        if (onProgress) {
+          onProgress(percent);
+        }
+      } else if (line.startsWith("result:")) {
+        lastResult = JSON.parse(line.substring(7));
+      } else if (line.startsWith("error:")) {
+        throw new Error(line.substring(6));
+      }
+    }
+  }
+
+  if (!lastResult) {
+    throw new Error("Upload did not return metadata results");
+  }
+  return lastResult;
 }
 
 export interface TrashData {

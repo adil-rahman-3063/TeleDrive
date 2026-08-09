@@ -154,7 +154,11 @@ export default function Dropzone({
         </div>
         <div className="dz-title">
           {uploadState === "idle" && (currentFileText || "Drop photos & videos")}
-          {uploadState === "uploading" && `${currentFileText} (${progressPercent}%)`}
+          {uploadState === "uploading" && (
+            progressPercent >= 100
+              ? `Saving to Telegram... (Do not close)`
+              : `${currentFileText} (${progressPercent}%)`
+          )}
           {uploadState === "done" && currentFileText}
         </div>
         <div className="dz-sub">

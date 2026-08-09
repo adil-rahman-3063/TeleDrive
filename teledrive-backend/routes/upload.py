@@ -50,8 +50,8 @@ async def bg_telegram_upload(upload_id: str, user_id: str, folder_id: Optional[s
         # Successful upload! Save metadata to files table
         new_file_id = str(uuid.uuid4())
         execute_db(
-            "INSERT INTO files (id, folder_id, tg_message_id, file_name, file_size, mime_type, user_id, deleted_at) VALUES (?, ?, ?, ?, ?, ?, ?, NULL)",
-            (new_file_id, folder_id, msg.id, file_name, file_size, mime_type, user_id)
+            "INSERT INTO files (id, folder_id, tg_message_id, file_name, file_size, mime_type, user_id, deleted_at, channel_id) VALUES (?, ?, ?, ?, ?, ?, ?, NULL, ?)",
+            (new_file_id, folder_id, msg.id, file_name, file_size, mime_type, user_id, str(channel_id))
         )
 
         # Update status to completed

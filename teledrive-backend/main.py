@@ -27,8 +27,10 @@ async def purge_expired_trash_loop():
                 try:
                     user_id = file["user_id"]
                     msg_id = file["tg_message_id"]
-                    user_record = fetch_one("SELECT channel_id FROM users WHERE phone = ?", (user_id,))
-                    channel_id = user_record.get("channel_id", "me") if user_record else "me"
+                    channel_id = file.get("channel_id")
+                    if not channel_id:
+                        user_record = fetch_one("SELECT channel_id FROM users WHERE phone = ?", (user_id,))
+                        channel_id = user_record.get("channel_id", "me") if user_record else "me"
                     if channel_id != "me":
                         channel_id = int(channel_id)
                         

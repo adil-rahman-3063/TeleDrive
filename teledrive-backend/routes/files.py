@@ -63,8 +63,10 @@ async def download_file(user_id: str, file_id: str, request: Request, background
         return FileResponse(cache_path)
 
     message_id = record["tg_message_id"]
-    user_record = fetch_one("SELECT channel_id FROM users WHERE phone = ?", (user_id,))
-    channel_id = user_record.get("channel_id", "me") if user_record else "me"
+    channel_id = record.get("channel_id")
+    if not channel_id:
+        user_record = fetch_one("SELECT channel_id FROM users WHERE phone = ?", (user_id,))
+        channel_id = user_record.get("channel_id", "me") if user_record else "me"
     
     if channel_id and channel_id != "me":
         try:

@@ -37,10 +37,16 @@ def init_db():
             mime_type TEXT,
             user_id TEXT,
             deleted_at TEXT,
+            channel_id TEXT,
             FOREIGN KEY (folder_id) REFERENCES folders(id)
         )
     """)
     
+    try:
+        cursor.execute("ALTER TABLE files ADD COLUMN channel_id TEXT")
+    except sqlite3.OperationalError:
+        pass # Column already exists
+        
     try:
         cursor.execute("ALTER TABLE folders ADD COLUMN deleted_at TEXT")
     except sqlite3.OperationalError:

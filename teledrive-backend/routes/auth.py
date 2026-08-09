@@ -196,20 +196,28 @@ async def set_download_path(user_id: str, path: str):
 @router.post("/auth/select-directory")
 def select_directory():
     try:
-        import tkinter as tk
-        from tkinter import filedialog
+        import subprocess
+        import sys
         
-        root = tk.Tk()
-        root.withdraw()
-        root.attributes('-topmost', True)
+        python_exe = sys.executable
+        # Locate select_dir.py in the same folder as main.py (one level up from routes/)
+        script_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "select_dir.py")
         
-        selected_path = filedialog.askdirectory(title="Select Download Folder")
-        root.destroy()
+        # Use CREATE_NO_WINDOW flag on Windows to prevent console flashing
+        creation_flags = 0x08000000 if sys.platform == "win32" else 0
         
-        if selected_path:
-            selected_path = os.path.abspath(selected_path)
-            return {"status": "success", "path": selected_path}
+        result = subprocess.run(
+            [python_exe, script_path],
+            capture_output=True,
+            text=True,
+            creationflags=creation_flags
+        )
+        
+        if result.returncode == 0:
+            path = result.stdout.strip()
+            if path:
+                return {"status": "success", "path": path}
         return {"status": "cancelled", "path": None}
     except Exception as e:
-        print("Folder picker dialog failed:", e)
+        print("Subprocess folder picker failed:", e)
         raise HTTPException(status_code=500, detail=f"Failed to open native dialog: {str(e)}")

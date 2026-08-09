@@ -104,6 +104,7 @@ export interface Folder {
   name: string;
   parent_id: number | null;
   user_id: string;
+  thumbnail_file_id?: string | null;
 }
 
 export interface FileMetadata {

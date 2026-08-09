@@ -804,6 +804,7 @@ export default function CollectionsPage() {
                           title={folder.name}
                           subCount={0}
                           fileCount={0}
+                          thumbnailUrl={folder.thumbnail_file_id ? `${BACKEND_URL}/download/${phoneNumber}/${folder.thumbnail_file_id}` : null}
                           onClick={() => setActiveFolder(folder)}
                         />
                       ))}

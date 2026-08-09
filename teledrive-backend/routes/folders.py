@@ -17,13 +17,33 @@ def create_folder(user_id: str, name: str, parent_id: str = None):
     )
     
     folder = fetch_one("SELECT * FROM folders WHERE id = ?", (last_id,))
+    if folder:
+        folder["thumbnail_file_id"] = None
     return [folder] if folder else []
+
+
+def get_folder_thumbnail(user_id: str, folder_id: int) -> str:
+    img_record = fetch_one(
+        """SELECT id FROM files 
+           WHERE user_id = ? AND folder_id = ? AND deleted_at IS NULL 
+           AND (mime_type LIKE 'image/%%' 
+                OR file_name LIKE '%%.png' 
+                OR file_name LIKE '%%.jpg' 
+                OR file_name LIKE '%%.jpeg' 
+                OR file_name LIKE '%%.webp' 
+                OR file_name LIKE '%%.gif') 
+           ORDER BY tg_message_id DESC LIMIT 1""",
+        (user_id, folder_id)
+    )
+    return img_record["id"] if img_record else None
 
 
 # 🔥 Get root folders (active only)
 @router.get("/folders/{user_id}")
 def get_root_folders(user_id: str):
     data = fetch_all("SELECT * FROM folders WHERE user_id = ? AND parent_id IS NULL AND deleted_at IS NULL", (user_id,))
+    for folder in data:
+        folder["thumbnail_file_id"] = get_folder_thumbnail(user_id, folder["id"])
     return data
 
 
@@ -34,6 +54,8 @@ def get_subfolders(user_id: str, parent_id: str):
         data = fetch_all("SELECT * FROM folders WHERE user_id = ? AND parent_id IS NULL AND deleted_at IS NULL", (user_id,))
     else:
         data = fetch_all("SELECT * FROM folders WHERE user_id = ? AND parent_id = ? AND deleted_at IS NULL", (user_id, parent_id))
+    for folder in data:
+        folder["thumbnail_file_id"] = get_folder_thumbnail(user_id, folder["id"])
     return data
 
 

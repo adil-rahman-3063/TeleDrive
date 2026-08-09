@@ -29,19 +29,32 @@ function checkPortActive(port: number): Promise<boolean> {
 async function ensureBackend() {
   if (backendStarted) return;
 
-  // Prevent launching duplicate processes, but kill any existing one on port 8000 first so it restarts with stdio inherited
+  // Kill any orphaned process on port 8000 first so we can bind successfully
+  try {
+    const { execSync } = require("child_process");
+    if (process.platform === "win32") {
+      const output = execSync("netstat -ano").toString();
+      const lines = output.split("\n");
+      for (const line of lines) {
+        if (line.includes(":8000") && line.includes("LISTENING")) {
+          const parts = line.trim().split(/\s+/);
+          const pid = parts[parts.length - 1];
+          if (pid && pid !== "0") {
+            console.log(`[TeleDrive] Stopping orphaned backend process ${pid} on port 8000...`);
+            execSync(`taskkill /pid ${pid} /f /t`);
+          }
+        }
+      }
+    } else {
+      execSync("lsof -t -i:8000 | xargs kill -9", { stdio: "ignore" });
+    }
+  } catch (e) {}
+
   let backendDir = path.resolve(process.cwd(), "../teledrive-backend");
   if (!fs.existsSync(backendDir)) {
     backendDir = path.resolve(process.cwd(), "../telestore-backend");
   }
 
-  const isAlreadyRunning = await checkPortActive(8000);
-  if (isAlreadyRunning) {
-    console.log("[TeleDrive] Backend is already running on port 8000. Skipping launch.");
-    backendStarted = true;
-    return;
-  }
-  
   // Resolve python path — cross-platform (Windows vs Mac/Linux)
   let pythonPath = "python";
   const isWindows = process.platform === "win32";
@@ -69,7 +82,12 @@ async function ensureBackend() {
 
   const cleanup = () => {
     try {
-      backendProcess.kill("SIGINT");
+      if (process.platform === "win32" && backendProcess.pid) {
+        const { execSync } = require("child_process");
+        execSync(`taskkill /pid ${backendProcess.pid} /f /t`);
+      } else {
+        backendProcess.kill("SIGINT");
+      }
     } catch (e) {}
   };
 

@@ -28,49 +28,16 @@ def get_files(user_id: str, folder_id: str):
     CACHE_DIR = custom_path if custom_path else "local_cache"
     
     for file in data:
-        cache_filename = f"{file['id']}_{file['file_name']}"
-        cache_path = os.path.join(CACHE_DIR, cache_filename)
-        file["is_cached"] = os.path.exists(cache_path)
+        file["is_cached"] = True
         
     return data
 
-# 🔥 Download file using file_id
-async def bg_cache_download(user_id: str, channel_id, message_id, cache_path: str):
-    tmp_path = cache_path + ".tmp"
-    try:
-        if os.path.exists(cache_path) or os.path.exists(tmp_path):
-            return
-        client = await get_client_and_connect(user_id)
-        message = await client.get_messages(channel_id, ids=message_id)
-        if message and message.media:
-            os.makedirs(os.path.dirname(cache_path), exist_ok=True)
-            await message.download_media(file=tmp_path)
-            if os.path.exists(tmp_path):
-                os.rename(tmp_path, cache_path)
-    except Exception as e:
-        print("BG Cache Download failed:", e)
-        if os.path.exists(tmp_path):
-            try:
-                os.remove(tmp_path)
-            except Exception:
-                pass
-
-# 🔥 Download file using file_id (Range-compliant streaming + background caching)
+# 🔥 Download file using file_id (Option A - Direct range-compliant streaming from Telegram)
 @router.get("/download/{user_id}/{file_id}")
-async def download_file(user_id: str, file_id: str, request: Request, background_tasks: BackgroundTasks):
+async def download_file(user_id: str, file_id: str, request: Request):
     record = fetch_one("SELECT * FROM files WHERE id = ?", (file_id,))
     if not record:
         raise HTTPException(status_code=404, detail="File not found")
-
-    user_record = fetch_one("SELECT download_path FROM users WHERE phone = ?", (user_id,))
-    custom_path = user_record.get("download_path") if user_record else None
-    CACHE_DIR = custom_path if custom_path else "local_cache"
-
-    cache_filename = f"{file_id}_{record['file_name']}"
-    cache_path = os.path.join(CACHE_DIR, cache_filename)
-
-    if os.path.exists(cache_path):
-        return FileResponse(cache_path)
 
     message_id = record["tg_message_id"]
     channel_id = record.get("channel_id")
@@ -84,15 +51,11 @@ async def download_file(user_id: str, file_id: str, request: Request, background
         except ValueError:
             pass
 
-    # Start caching in background so future plays/seeks are instant from disk
-    background_tasks.add_task(bg_cache_download, user_id, channel_id, message_id, cache_path)
-
     client = await get_client_and_connect(user_id)
     message = await client.get_messages(channel_id, ids=message_id)
     if not message or not message.media:
         raise HTTPException(status_code=404, detail="Media not found on Telegram")
 
-    # Parse Range Header
     range_header = request.headers.get("Range")
     start_byte = 0
     total_size = record["file_size"]
@@ -114,11 +77,10 @@ async def download_file(user_id: str, file_id: str, request: Request, background
     content_length = end_byte - start_byte + 1
 
     async def stream_generator():
-        # Stream chunks starting at the requested byte offset from Telegram
         async for chunk in client.iter_download(
             message.media,
             offset=start_byte,
-            request_size=128 * 1024, # 128KB chunks
+            request_size=256 * 1024, # 256KB chunks for direct streaming throughput
             limit=content_length
         ):
             yield chunk
@@ -126,6 +88,8 @@ async def download_file(user_id: str, file_id: str, request: Request, background
     headers = {
         "Accept-Ranges": "bytes",
         "Content-Length": str(content_length),
+        "Content-Type": record["mime_type"] or "application/octet-stream",
+        "Content-Disposition": f'inline; filename="{record["file_name"]}"'
     }
     if range_header:
         headers["Content-Range"] = f"bytes {start_byte}-{end_byte}/{total_size}"
@@ -133,7 +97,6 @@ async def download_file(user_id: str, file_id: str, request: Request, background
     return StreamingResponse(
         stream_generator(),
         status_code=status_code,
-        media_type=record.get("mime_type", "application/octet-stream"),
         headers=headers
     )
 

@@ -48,8 +48,7 @@ async def download_file(user_id: str, file_id: str):
         except ValueError:
             pass
 
-    client = get_client(user_id)
-    await client.start()
+    client = await get_client_and_connect(user_id)
 
     message = await client.get_messages(channel_id, ids=message_id)
     if not message or not message.media:
@@ -78,9 +77,15 @@ async def download_file(user_id: str, file_id: str):
                     pass
             raise err
 
+    headers = {
+        "Accept-Ranges": "bytes",
+        "Content-Length": str(record["file_size"]),
+    }
+
     return StreamingResponse(
         stream_generator(),
-        media_type=record.get("mime_type", "application/octet-stream")
+        media_type=record.get("mime_type", "application/octet-stream"),
+        headers=headers
     )
 
 
@@ -125,8 +130,7 @@ async def delete_file_permanent(user_id: str, file_id: str):
             pass
 
     # Delete from Telegram
-    client = get_client(user_id)
-    await client.start()
+    client = await get_client_and_connect(user_id)
     await client.delete_messages(channel_id, [message_id])
 
     # Delete from SQLite

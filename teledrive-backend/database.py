@@ -52,7 +52,7 @@ def init_db():
         pass # Column already exists
 
     try:
-        cursor.execute("ALTER TABLE users ADD COLUMN original_quality INTEGER DEFAULT 0")
+        cursor.execute("ALTER TABLE users ADD COLUMN original_quality INTEGER DEFAULT 1")
     except sqlite3.OperationalError:
         pass # Column already exists
 

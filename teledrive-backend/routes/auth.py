@@ -67,7 +67,7 @@ async def verify_code(user_id: str, phone: str, code: str):
         channel_id = None
         if not existing_user:
             # 🔥 Insert new user
-            execute_db("INSERT INTO users (phone) VALUES (?)", (user_id,))
+            execute_db("INSERT INTO users (phone, original_quality) VALUES (?, 1)", (user_id,))
         else:
             channel_id = existing_user.get("channel_id")
 

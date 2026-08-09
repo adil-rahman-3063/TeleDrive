@@ -95,6 +95,8 @@ export default function CollectionsPage() {
     }
   };
 
+  const [imageProgresses, setImageProgresses] = useState<Record<string, { progress: number; status: string }>>({});
+
   // Multi-Select States
   const [selectedFileIds, setSelectedFileIds] = useState<string[]>([]);
   const [isMouseDown, setIsMouseDown] = useState(false);
@@ -254,6 +256,54 @@ export default function CollectionsPage() {
       clearTimeout(timer);
     };
   }, [showDownloadProgress, downloadItems.length]);
+
+  useEffect(() => {
+    if (files.length === 0 || viewingTrash) return;
+
+    // Find all uncached image files
+    const uncachedImages = files.filter(f => {
+      const isImage = f.mime_type?.startsWith("image/") || /\.(jpg|jpeg|png|webp|heic)$/i.test(f.file_name);
+      // Wait: check if file has is_cached property, if we don't have it, assume false
+      return isImage && !(f as any).is_cached;
+    });
+
+    if (uncachedImages.length === 0) return;
+
+    let active = true;
+    const intervals: Record<string, NodeJS.Timeout> = {};
+
+    uncachedImages.forEach(file => {
+      const poll = async () => {
+        try {
+          const progressData = await getFileDownloadProgress(file.id);
+          if (!active) return;
+
+          setImageProgresses(prev => ({
+            ...prev,
+            [file.id]: progressData
+          }));
+
+          if (progressData.status === "cached" || progressData.progress >= 100) {
+            // Mark as cached in local files array
+            setFiles(prevFiles => 
+              prevFiles.map(f => f.id === file.id ? { ...f, is_cached: true } : f)
+            );
+            clearInterval(intervals[file.id]);
+          }
+        } catch (err) {
+          console.error("Error polling image download progress:", err);
+        }
+      };
+
+      poll();
+      intervals[file.id] = setInterval(poll, 1000);
+    });
+
+    return () => {
+      active = false;
+      Object.values(intervals).forEach(clearInterval);
+    };
+  }, [files, viewingTrash]);
 
   // Permanent delete confirmation modal
   const [permDeleteTarget, setPermDeleteTarget] = useState<{ type: "folder" | "file"; id: any; name: string } | null>(null);
@@ -947,6 +997,30 @@ export default function CollectionsPage() {
                                 style={{ width: "100%", height: "100%", objectFit: "cover", position: "absolute", top: 0, left: 0 }} 
                                 loading="lazy"
                               />
+                            )}
+                            {isImage && !(file as any).is_cached && imageProgresses[file.id] && imageProgresses[file.id].progress < 100 && (
+                              <div style={{
+                                position: "absolute",
+                                top: 0,
+                                left: 0,
+                                right: 0,
+                                bottom: 0,
+                                background: "rgba(10, 10, 12, 0.75)",
+                                backdropFilter: "blur(4px)",
+                                display: "flex",
+                                flexDirection: "column",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                gap: "6px",
+                                zIndex: 5,
+                                color: "#fff"
+                              }}>
+                                <svg className="spin" viewBox="0 0 24 24" style={{ width: "22px", height: "22px", stroke: "var(--tg)", fill: "none" }}>
+                                  <circle cx="12" cy="12" r="10" strokeWidth="3" strokeDasharray="30 10" />
+                                </svg>
+                                <span style={{ fontSize: "11px", fontWeight: 600 }}>{imageProgresses[file.id].progress}%</span>
+                                <span style={{ fontSize: "8.5px", color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.5px" }}>Caching</span>
+                              </div>
                             )}
                             {isVideo && (
                               <video 

@@ -22,6 +22,16 @@ def get_files(user_id: str, folder_id: str):
             "SELECT * FROM files WHERE user_id = ? AND folder_id = ? AND deleted_at IS NULL ORDER BY tg_message_id DESC", 
             (user_id, folder_id)
         )
+        
+    user_record = fetch_one("SELECT download_path FROM users WHERE phone = ?", (user_id,))
+    custom_path = user_record.get("download_path") if user_record else None
+    CACHE_DIR = custom_path if custom_path else "local_cache"
+    
+    for file in data:
+        cache_filename = f"{file['id']}_{file['file_name']}"
+        cache_path = os.path.join(CACHE_DIR, cache_filename)
+        file["is_cached"] = os.path.exists(cache_path)
+        
     return data
 
 # 🔥 Download file using file_id

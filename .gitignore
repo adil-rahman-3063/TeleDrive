@@ -1,0 +1,23 @@
+# Frontend
+teledrive/node_modules/
+teledrive/.next/
+teledrive/out/
+teledrive/.env*
+
+# Backend
+teledrive-backend/.venv/
+teledrive-backend/venv/
+teledrive-backend/env/
+teledrive-backend/__pycache__/
+teledrive-backend/*.py[cod]
+teledrive-backend/sessions/
+teledrive-backend/*.session
+teledrive-backend/*.session-journal
+teledrive-backend/local_cache/
+teledrive-backend/*.db
+teledrive-backend/.env
+
+# OS/System
+.DS_Store
+Thumbs.db
+*.log

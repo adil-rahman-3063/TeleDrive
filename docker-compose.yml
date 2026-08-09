@@ -1,0 +1,14 @@
+services:
+  teledrive:
+    build: .
+    ports:
+      - "3000:3000"
+      - "8000:8000"
+    env_file:
+      - ./teledrive-backend/.env
+    volumes:
+      # Persist Telegram sessions across restarts
+      - ./teledrive-backend/sessions:/app/backend/sessions
+      # Persist SQLite database
+      - ./teledrive-backend/teledrive.db:/app/backend/teledrive.db
+    restart: unless-stopped

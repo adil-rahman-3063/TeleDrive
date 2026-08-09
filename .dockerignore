@@ -1,0 +1,31 @@
+# Dependencies (rebuilt inside container)
+teledrive/node_modules
+teledrive/.next
+
+# Python environments
+teledrive-backend/.venv
+teledrive-backend/venv
+teledrive-backend/__pycache__
+
+# Sensitive data
+teledrive-backend/.env
+teledrive-backend/sessions
+teledrive-backend/teledrive.db
+teledrive-backend/local_cache
+
+# Git
+.git
+.gitignore
+
+# IDE
+.vscode
+.idea
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docs
+*.md
+!README.md
+LICENSE

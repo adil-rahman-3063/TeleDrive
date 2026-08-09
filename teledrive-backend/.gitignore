@@ -1,0 +1,31 @@
+# Environments
+.env
+.venv/
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Python Cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Telethon Sessions (contains auth tokens — NEVER commit)
+sessions/
+*.session
+*.session-journal
+
+# Database
+*.db
+
+# Local file cache (auto-cleared on server restart)
+local_cache/
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+Thumbs.db

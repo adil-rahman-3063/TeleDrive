@@ -188,6 +188,9 @@ export default function DashboardPage() {
           </div>
         </div>
       </div>
+      <div style={{ textAlign: "center", marginTop: "24px", fontSize: "11.5px", color: "var(--muted-2)", opacity: 0.8 }}>
+        UI Design inspired by <a href="https://dribbble.com/den4dens" target="_blank" rel="noopener noreferrer" style={{ color: "var(--tg)", textDecoration: "underline" }}>Denis Dod (Dribbble)</a>
+      </div>
       <Footer />
     </>
   );

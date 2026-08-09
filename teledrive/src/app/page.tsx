@@ -163,13 +163,11 @@ export default function DashboardPage() {
                 </svg>
                 <span>Account</span>
               </div>
-              <div className="action-tile" onClick={() => router.push("/settings?tab=channels")}>
+              <div className="action-tile" onClick={() => router.push("/settings?tab=creator")}>
                 <svg viewBox="0 0 24 24">
-                  <circle cx="8" cy="8" r="4" />
-                  <circle cx="15" cy="9" r="3.4" />
-                  <circle cx="10.5" cy="15.5" r="3.8" />
+                  <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
                 </svg>
-                <span>Channels</span>
+                <span>Creator</span>
               </div>
             </div>
           </div>

@@ -71,6 +71,8 @@ export default function SettingsPage() {
         setActiveSettingsPanel("channels");
       } else if (tab === "account") {
         setActiveSettingsPanel("account");
+      } else if (tab === "creator") {
+        setActiveSettingsPanel("creator");
       }
     }
   }, [pathname, loading]);

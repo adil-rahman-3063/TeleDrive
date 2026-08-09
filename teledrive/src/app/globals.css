@@ -2030,3 +2030,53 @@ svg {
   color: #fff;
 }
 
+/* ───────────────────────────────────────────────
+   Mobile & Tablet Responsiveness Overrides
+   ─────────────────────────────────────────────── */
+@media (max-width: 600px) {
+  .settings-nav {
+    flex-direction: row !important;
+    overflow-x: auto;
+    padding-bottom: 8px;
+    gap: 8px;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+  .settings-nav::-webkit-scrollbar {
+    display: none;
+  }
+  .settings-nav button {
+    white-space: nowrap;
+    padding: 10px 14px;
+    font-size: 13px;
+  }
+  .search-controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .filter-chips {
+    overflow-x: auto;
+    padding-bottom: 4px;
+    scrollbar-width: none;
+  }
+  .filter-chips::-webkit-scrollbar {
+    display: none;
+  }
+  .filter-chip {
+    white-space: nowrap;
+  }
+}
+
+@media (max-width: 500px) {
+  .collections-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .action-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+  .viewer-stage {
+    width: 95vw !important;
+    height: 60vh !important;
+  }
+}
+

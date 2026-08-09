@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from fastapi import BackgroundTasks
 import os
 import uuid
@@ -52,10 +52,36 @@ async def download_file(user_id: str, file_id: str):
     await client.start()
 
     message = await client.get_messages(channel_id, ids=message_id)
-    # Download directly into local_cache path to serve instantly next time
-    await message.download_media(file=cache_path)
+    if not message or not message.media:
+        raise HTTPException(status_code=404, detail="Media not found on Telegram")
 
-    return FileResponse(cache_path)
+    # Fast Streaming + Background Cache Writing
+    async def stream_generator():
+        os.makedirs(CACHE_DIR, exist_ok=True)
+        tmp_path = cache_path + ".tmp"
+        try:
+            # We open the tmp file and write chunks as we stream them
+            with open(tmp_path, "wb") as f:
+                async for chunk in client.iter_download(message.media):
+                    f.write(chunk)
+                    yield chunk
+            # Once fully downloaded without errors, rename to final cache path
+            if os.path.exists(tmp_path):
+                os.rename(tmp_path, cache_path)
+        except Exception as err:
+            print("STREAM ERROR:", err)
+            # Remove partial/corrupt file
+            if os.path.exists(tmp_path):
+                try:
+                    os.remove(tmp_path)
+                except Exception:
+                    pass
+            raise err
+
+    return StreamingResponse(
+        stream_generator(),
+        media_type=record.get("mime_type", "application/octet-stream")
+    )
 
 
 # 🔥 Soft delete a file (move to trash)

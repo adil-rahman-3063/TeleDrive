@@ -767,8 +767,13 @@ export default function CollectionsPage() {
                                 style={{ width: "100%", height: "100%", objectFit: "cover", position: "absolute", top: 0, left: 0, zIndex: 2 }} 
                               />
                             ) : isVideo ? (
-                              // Fallback colored card or background representation when not hovered
-                              <div style={{ width: "100%", height: "100%", background: grads[(idx + 2) % grads.length], position: "absolute", top: 0, left: 0 }} />
+                              <video 
+                                src={fileUrl} 
+                                preload="metadata"
+                                muted
+                                playsInline
+                                style={{ width: "100%", height: "100%", objectFit: "cover", position: "absolute", top: 0, left: 0 }} 
+                              />
                             ) : null}
                             {isVideo && (
                               <div className="vid-badge" style={{ zIndex: 3 }}>

@@ -60,14 +60,22 @@ async function ensureBackend() {
   
   const backendProcess = spawn(pythonPath, ["-m", "uvicorn", "main:app", "--port", "8000"], {
     cwd: backendDir,
-    detached: true,
     stdio: "inherit",
     windowsHide: true // 🔥 Completely hides the console window on Windows!
   });
 
-  backendProcess.unref();
   backendStarted = true;
   console.log("[TeleDrive] Backend process launched successfully.");
+
+  const cleanup = () => {
+    try {
+      backendProcess.kill("SIGINT");
+    } catch (e) {}
+  };
+
+  process.on("exit", cleanup);
+  process.on("SIGINT", () => { cleanup(); process.exit(0); });
+  process.on("SIGTERM", () => { cleanup(); process.exit(0); });
 }
 
 // Call on startup (only in the main server process, not in compilation workers or Docker)

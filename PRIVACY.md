@@ -1,42 +1,84 @@
-# PRIVACY POLICY & DISCLAIMER
-
+# TELEDRIVE TERMS OF SERVICE & PRIVACY POLICY
+### SELF-HOSTED OPEN-SOURCE CLOUD SYSTEM
 Last Updated: August 2026
 
-PLEASE READ THIS PRIVACY POLICY AND DISCLAIMER CAREFULLY BEFORE USING TELEDRIVE. BY USING THE APPLICATION, YOU AGREE TO BE BOUND BY ALL TERMS AND CONDITIONS OUTLINED BELOW.
+---
+
+## IMPORTANT LEGAL NOTICE
+PLEASE READ THIS TERMS OF SERVICE AND PRIVACY POLICY (HEREINAFTER referred to as the "Agreement") CAREFULLY. TELEDRIVE IS A SELF-HOSTED UTILITY. BY INSTALLING, RUNNING, OR USING THE APPLICATION, YOU AGREE TO BE BOUND BY EVERY CLAUSE, DISCLAIMER, AND LIMITATION OF LIABILITY CONTAIND IN THIS DOCUMENT. IF YOU DO NOT AGREE TO THESE TERMS, DO NOT RUN, DOWNLOAD, OR USE THIS APPLICATION.
 
 ---
 
-### 1. APPLICATION ARCHITECTURE & DATA FLOW
-TeleDrive is a self-hosted client interface that connects to the Telegram API to facilitate cloud storage. 
-* **Telegram Backend Storage**: TeleDrive does NOT operate any file storage servers, cloud databases, or content delivery networks. All media, documents, and files uploaded through TeleDrive are transmitted directly to your personal Telegram channel/group or saved messages.
-* **No Middleman**: Files do not pass through or reside on any servers owned by the developer of TeleDrive. Everything runs locally on your own machine.
-* **Metadata Persistence**: TeleDrive maintains a local SQLite database (`teledrive.db`) on your computer to store folder structures, synced file references, and connection states. This data never leaves your local system.
+## 1. PREAMBLE AND DEFINITIONS
+This section defines key concepts used throughout this Agreement to ensure complete legal clarity.
+* **"TeleDrive"**: Refers to the software codebase, including the frontend UI built with Next.js and the Python backend built with FastAPI, using the Telethon library.
+* **"The Developer"**: Refers to Adil Rahiman, the creator and primary author of the TeleDrive application codebase.
+* **"The User"**: Refers to you, the individual, entity, or organization running the TeleDrive server instance locally or on a private server.
+* **"Telegram Backend"**: Refers to the official Telegram Messenger network, API servers, and MTProto connection protocol operated by Telegram FZ-LLC.
+* **"Local Instance"**: Refers to the local copy of the web server running on the user's private physical computer or virtual server.
+* **"Session Database"**: Refers to the local SQLite file (`teledrive.db`) and session files (`*.session`) created and maintained by the client locally.
 
 ---
 
-### 2. DEVELOPER ACCESS & CONTROL
-Adil Rahiman (the creator and developer of TeleDrive) has ZERO access, control, or visibility over:
-1. Your Telegram credentials (API ID, API Hash, phone number, sessions, or login codes).
-2. The files, videos, photos, and messages you upload, stream, download, or delete.
-3. Your database files or server configuration settings.
-Everything is processed strictly on your host machine and communicated directly to Telegram's official API servers. There is no remote tracking, analytics, or telemetry collected by the developer.
+## 2. SYSTEM ARCHITECTURE & LOCALIZED DATA ISOLATION
+TeleDrive is designed as a fully localized, self-hosted file management dashboard. It does not utilize any cloud databases or central servers owned by the Developer.
+* **Local Processing**: When you run TeleDrive, all processing is done entirely on your hardware. Files uploaded through the UI are temporarily held in local folders before being chunked and sent directly to Telegram.
+* **Direct MTProto Connection**: The application establishes a direct, secure MTProto connection between your server and Telegram's API gateways. No middleman server intercepts, routes, or proxies your uploads.
+* **No Remote Telemetry**: TeleDrive contains no analytics SDKs, error tracking scripts, or telemetry reporters. The Developer has no ability to view logs, server configurations, or data traffic.
+* **SQLite Persistence**: All metadata (including collections, folders, and mapping of Telegram message IDs) is kept locally on your disk in `teledrive.db`. Deleting this file will permanently wipe all local organizational folder structures.
 
 ---
 
-### 3. USER RESPONSIBILITY & COMPLIANCE
-As the host and sole operator of your TeleDrive instance, you are entirely responsible for:
-* **Compliance with Laws**: You must ensure that all content uploaded and stored complies with local laws, international regulations, and copyright policies (DMCA).
-* **Compliance with Telegram terms**: You must comply with the official Telegram Terms of Service. Uploading prohibited content (including but not limited to copyrighted materials, pirated files, spam, or illicit content) is strictly at your own risk.
+## 3. ZERO ACCESS BY THE DEVELOPER
+The architecture ensures absolute privacy through complete decentralization. 
+* **Credentials Security**: Your Telegram API ID, API Hash, phone number, and active session keys are never sent to the Developer or any third party. They remain encrypted within your local system files.
+* **No File Access**: The Developer cannot view, retrieve, modify, or delete any photos, videos, documents, or archives uploaded using TeleDrive.
+* **No Administrative Control**: Because the software runs on your hardware, the Developer cannot revoke your access to the software or control how you manage your local folders.
 
 ---
 
-### 4. TELEGRAM ACCOUNT RISKS & LIMITATIONS
-Using Telegram as a hosting backend is subject to Telegram's strict automated spam, bandwidth, and abuse filters. 
-* **Account Restrictions / Bans**: If you upload huge volumes of data, share download links excessively, or violate Telegram's Terms of Service, Telegram may restrict, rate-limit, temporarily block, or permanently terminate your Telegram account.
-* **Data Loss**: In the event that Telegram terminates your account, deletes your channels, or experiences service outages, you will permanently lose access to all files hosted on Telegram.
-* **No Liability**: You explicitly acknowledge and agree that **Adil Rahiman has no liability or responsibility** for any account restrictions, bans, rate limits, or data loss you may experience as a result of using TeleDrive. All account risks are borne solely by you.
+## 4. TELEGRAM API USAGE AND ACCOUNT LIMITATIONS
+TeleDrive utilizes the official Telegram API. Telegram enforces strict automated filters and limit thresholds to prevent abuse.
+* **Automated Rate Limits**: Uploading or downloading large volumes of files continuously may trigger Telegram's API flood limits (`FloodWaitError`). This will pause operations for a period determined by Telegram.
+* **Channel Bandwidth Caps**: While Telegram provides generous storage, excessive usage or high-frequency uploads may result in temporary bandwidth throttling.
+* **Account Terminations**: Telegram's automated spam detection systems monitor account activity. Storing pirated content, copyrighted software, or illegal media, or creating excessive download channels, can lead to your Telegram account being permanently banned.
+* **Outages and Out-of-Service**: If Telegram's servers go down, or if Telegram restricts access to their API in your region, TeleDrive will not function. The Developer is not responsible for Telegram's availability.
 
 ---
 
-### 5. NO WARRANTIES
-TELEDRIVE IS PROVIDED "AS IS" AND "AS AVAILABLE", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND NONINFRINGEMENT. IN NO EVENT SHALL THE CREATOR (ADIL RAHIMAN) BE LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT, OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+## 5. COMPLETE USER LIABILITY & INDEMNIFICATION
+By using TeleDrive, you accept full legal responsibility for your actions.
+* **Legality of Hosted Content**: You must not use TeleDrive to store or share copyrighted material without permission, illegal software, or any other media that violates local or international laws.
+* **Self-Regulation**: The user is the sole moderator of their storage. If you share files via download links, you are liable for any copyright infringement claims or complaints.
+* **Indemnification**: You agree to defend, indemnify, and hold harmless the Developer (Adil Rahiman) from and against any claims, liabilities, damages, losses, and expenses arising out of your misuse of the application or violation of these terms.
+
+---
+
+## 6. INDEPENDENCE OF ACCOUNT RISK
+YOU EXPLICITLY ACKNOWLEDGE AND AGREE THAT:
+* **Your Account is Your Responsibility**: Any suspension, limitation, restriction, or permanent ban of your Telegram account resulting from using TeleDrive is solely your problem.
+* **No Liability for Bans**: The Developer will not be held liable, financially or otherwise, for any damage caused to your Telegram communication channels, contacts, or stored data due to Telegram enforcing bans on your account.
+* **Risk of Permanent Data Loss**: If Telegram bans your account or deletes your storage channel, all files uploaded will be permanently deleted from Telegram's network. The Developer cannot recover banned files or restore lost channels.
+
+---
+
+## 7. INTELLECTUAL PROPERTY AND LICENSING
+* **Open Source Codebase**: TeleDrive is released under open-source terms. You are free to inspect, modify, fork, and self-host the codebase according to its license agreements.
+* **Telegram Brand**: "Telegram" is a registered trademark of Telegram FZ-LLC. TeleDrive is an independent project and is not affiliated, endorsed, sponsored, or officially recognized by Telegram.
+
+---
+
+## 8. SECURITY AND CREDENTIAL HANDLING
+* **User Server Security**: Because TeleDrive runs locally, you are responsible for securing the machine it runs on. Anyone with physical or network access to your local SQLite files or session keys can access your Telegram account.
+* **Encryption Recommend**: It is strongly recommended to encrypt your server's disk storage and restrict backend port access (`localhost:8000` / `localhost:3000`) using firewalls or VPNs.
+
+---
+
+## 9. AMENDMENTS TO AGREEMENT
+* **No Prior Notification**: As a self-hosted codebase, the Developer cannot force updates. You must periodically review the latest LICENSE and PRIVACY policy files on the official GitHub repository to stay informed of modifications.
+* **Continued Usage**: Continuing to run older or updated versions of TeleDrive constitutes immediate acceptance of all new and modified terms in this Agreement.
+
+---
+
+## 10. DISCLAIMER OF ALL WARRANTIES
+TELEDRIVE IS DISTRIBUTED "AS IS" AND "AS AVAILABLE" WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED. TO THE FULLEST EXTENT PERMISSIBLE BY APPLICABLE LAW, THE DEVELOPER DISCLAIMS ALL WARRANTIES, EXPRESS OR IMPLIED, INCLUDING, BUT NOT LIMITED TO, IMPLIED WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND NON-INFRINGEMENT. THE ENTIRE RISK AS TO THE QUALITY, SECURITY, AND PERFORMANCE OF THE APPLICATION IS BORN BY THE USER.

@@ -37,37 +37,9 @@ async function ensureBackend() {
 
   const isAlreadyRunning = await checkPortActive(8000);
   if (isAlreadyRunning) {
-    try {
-      const { execSync } = require("child_process");
-      const isWin = process.platform === "win32";
-      if (isWin) {
-        const netstat = execSync("netstat -ano").toString();
-        const lines = netstat.split("\n");
-        for (const line of lines) {
-          if (line.includes("127.0.0.1:8000") || line.includes("0.0.0.0:8000") || line.includes("[::]:8000")) {
-            const cols = line.trim().split(/\s+/);
-            const pid = cols[cols.length - 1];
-            if (pid && pid !== "0") {
-              console.log(`[TeleDrive] Killing existing backend process on PID ${pid} to bind stdio logs...`);
-              execSync(`taskkill /F /PID ${pid}`, { stdio: "ignore" });
-              await new Promise((r) => setTimeout(r, 1000));
-            }
-          }
-        }
-      } else {
-        // Mac/Linux: use lsof to find PID on port 8000
-        try {
-          const lsofOut = execSync("lsof -ti:8000").toString().trim();
-          if (lsofOut) {
-            console.log(`[TeleDrive] Killing existing backend process on PID ${lsofOut}...`);
-            execSync(`kill -9 ${lsofOut}`, { stdio: "ignore" });
-            await new Promise((r) => setTimeout(r, 1000));
-          }
-        } catch { /* no process on port */ }
-      }
-    } catch (e) {
-      console.log("[TeleDrive] Failed to kill existing port 8000 process:", e);
-    }
+    console.log("[TeleDrive] Backend is already running on port 8000. Skipping launch.");
+    backendStarted = true;
+    return;
   }
   
   // Resolve python path — cross-platform (Windows vs Mac/Linux)

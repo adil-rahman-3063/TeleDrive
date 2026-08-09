@@ -52,7 +52,10 @@ async def download_file(user_id: str, file_id: str, request: Request, background
     if not record:
         raise HTTPException(status_code=404, detail="File not found")
 
-    CACHE_DIR = "local_cache"
+    user_record = fetch_one("SELECT download_path FROM users WHERE phone = ?", (user_id,))
+    custom_path = user_record.get("download_path") if user_record else None
+    CACHE_DIR = custom_path if custom_path else "local_cache"
+
     cache_filename = f"{file_id}_{record['file_name']}"
     cache_path = os.path.join(CACHE_DIR, cache_filename)
 
@@ -292,4 +295,35 @@ async def sync_telegram_channel(user_id: str):
     except Exception as e:
         import traceback
         print("SYNC ERROR:", traceback.format_exc())
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# 🔥 Get background caching progress of a file
+@router.get("/download-progress/{file_id}")
+def get_download_progress(file_id: str):
+    try:
+        record = fetch_one("SELECT * FROM files WHERE id = ?", (file_id,))
+        if not record:
+            raise HTTPException(status_code=404, detail="File not found")
+
+        user_id = record["user_id"]
+        user_record = fetch_one("SELECT download_path FROM users WHERE phone = ?", (user_id,))
+        custom_path = user_record.get("download_path") if user_record else None
+        CACHE_DIR = custom_path if custom_path else "local_cache"
+
+        cache_filename = f"{file_id}_{record['file_name']}"
+        cache_path = os.path.join(CACHE_DIR, cache_filename)
+        tmp_path = cache_path + ".tmp"
+
+        if os.path.exists(cache_path):
+            return {"progress": 100, "status": "cached"}
+            
+        if os.path.exists(tmp_path):
+            current_size = os.path.getsize(tmp_path)
+            total_size = record["file_size"] or 1
+            progress = min(99, int((current_size / total_size) * 100))
+            return {"progress": progress, "status": "downloading"}
+            
+        return {"progress": 0, "status": "not_started"}
+    except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

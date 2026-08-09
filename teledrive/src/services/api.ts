@@ -159,8 +159,7 @@ export async function deleteFile(phone: string, fileId: string) {
 export async function uploadFile(
   phone: string,
   folderId: string | null,
-  file: File,
-  onProgress?: (progress: number) => void
+  file: File
 ): Promise<any> {
   const formData = new FormData();
   formData.append("user_id", phone);
@@ -175,46 +174,11 @@ export async function uploadFile(
   });
 
   if (!res.ok) {
-    const errText = await res.text();
-    throw new Error(`Upload failed: ${errText}`);
+    const err = await res.json();
+    throw new Error(err.detail || "Upload failed");
   }
 
-  const reader = res.body?.getReader();
-  if (!reader) {
-    throw new Error("No response body stream reader available");
-  }
-
-  const decoder = new TextDecoder();
-  let buffer = "";
-  let lastResult = null;
-
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-
-    buffer += decoder.decode(value, { stream: true });
-    const lines = buffer.split("\n");
-    buffer = lines.pop() || "";
-
-    for (const line of lines) {
-      if (!line.trim()) continue;
-      if (line.startsWith("progress:")) {
-        const percent = parseFloat(line.substring(9));
-        if (onProgress) {
-          onProgress(percent);
-        }
-      } else if (line.startsWith("result:")) {
-        lastResult = JSON.parse(line.substring(7));
-      } else if (line.startsWith("error:")) {
-        throw new Error(line.substring(6));
-      }
-    }
-  }
-
-  if (!lastResult) {
-    throw new Error("Upload did not return metadata results");
-  }
-  return lastResult;
+  return res.json();
 }
 
 export interface TrashData {
@@ -264,6 +228,7 @@ export interface UserStats {
   folders_count: number;
   total_size: number;
   original_quality?: boolean;
+  download_path?: string | null;
 }
 
 export async function getUserStats(phone: string): Promise<UserStats> {
@@ -293,6 +258,31 @@ export async function moveFile(phone: string, fileId: string, folderId: string |
   const dest = folderId === null ? "root" : folderId;
   const res = await fetch(`${BACKEND_URL}/files/${phone}/${fileId}/move?new_folder_id=${dest}`, {
     method: "PUT"
+  });
+  return res.json();
+}
+
+export async function setDownloadPath(phone: string, path: string) {
+  const res = await fetch(`${BACKEND_URL}/auth/set-download-path?user_id=${encodeURIComponent(phone)}&path=${encodeURIComponent(path)}`, {
+    method: "POST"
+  });
+  if (!res.ok) {
+    throw new Error("Failed to set download path");
+  }
+  return res.json();
+}
+
+export async function getUploadProgress(phone: string): Promise<Array<{ id: string; file_name: string; progress: number; status: string }>> {
+  const res = await fetch(`${BACKEND_URL}/upload-progress/${encodeURIComponent(phone)}`);
+  if (!res.ok) {
+    throw new Error("Failed to get upload progress");
+  }
+  return res.json();
+}
+
+export async function clearCompletedUploads(phone: string): Promise<any> {
+  const res = await fetch(`${BACKEND_URL}/upload-progress/${encodeURIComponent(phone)}/clear`, {
+    method: "POST"
   });
   return res.json();
 }

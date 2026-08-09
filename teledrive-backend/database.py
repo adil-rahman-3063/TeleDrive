@@ -56,6 +56,23 @@ def init_db():
     except sqlite3.OperationalError:
         pass # Column already exists
 
+    try:
+        cursor.execute("ALTER TABLE users ADD COLUMN download_path TEXT")
+    except sqlite3.OperationalError:
+        pass # Column already exists
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS uploads (
+            id TEXT PRIMARY KEY,
+            file_name TEXT,
+            file_size INTEGER,
+            folder_id INTEGER,
+            progress REAL DEFAULT 0,
+            status TEXT DEFAULT 'pending',
+            user_id TEXT
+        )
+    """)
+
     conn.commit()
     conn.close()
 

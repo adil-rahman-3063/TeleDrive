@@ -5,7 +5,7 @@ import { useRouter, usePathname } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/components/Toast";
 import TopNav from "@/components/TopNav";
-import { getUserStats, setChannel, UserStats } from "@/services/api";
+import { getUserStats, setChannel, setDownloadPath, UserStats } from "@/services/api";
 import Footer from "@/components/Footer";
 
 export default function SettingsPage() {
@@ -22,7 +22,9 @@ export default function SettingsPage() {
     toggleShowFileNames,
     originalQuality,
     toggleOriginalQuality,
-    backendOnline
+    backendOnline,
+    accentColor,
+    changeAccentColor
   } = useAuth();
   const router = useRouter();
 
@@ -37,16 +39,30 @@ export default function SettingsPage() {
   const [stats, setStats] = useState<UserStats | null>(null);
   const [statsLoading, setStatsLoading] = useState(true);
 
+  const [downloadPathInput, setDownloadPathInput] = useState("");
+
   const fetchStats = async () => {
     if (!phoneNumber) return;
     setStatsLoading(true);
     try {
       const s = await getUserStats(phoneNumber);
       setStats(s);
+      setDownloadPathInput(s.download_path || "");
     } catch (err) {
       console.error("Failed to load user settings stats:", err);
     } finally {
       setStatsLoading(false);
+    }
+  };
+
+  const handleSaveDownloadPath = async () => {
+    if (!phoneNumber) return;
+    try {
+      await setDownloadPath(phoneNumber, downloadPathInput);
+      showToast("Download folder path updated successfully!", "success");
+      fetchStats();
+    } catch (err: any) {
+      showToast(`Failed to update download path: ${err.message || err}`, "error");
     }
   };
 
@@ -215,14 +231,35 @@ export default function SettingsPage() {
                     <div className="knob"></div>
                   </div>
                 </div>
-                <div className="row-item">
+                <div className="row-item" style={{ flexDirection: "column", alignItems: "flex-start", gap: "10px" }}>
                   <div className="ri-text">
-                    <b>Thumbnail density</b>
-                    <span>Number of columns in grid views</span>
+                    <b>Custom Download Folder</b>
+                    <span>Local folder path on your computer where downloaded media files will be saved</span>
                   </div>
-                  <div className="seg" style={{ width: "180px" }}>
-                    <button className="active">Cozy</button>
-                    <button>Compact</button>
+                  <div style={{ display: "flex", gap: "8px", width: "100%", marginTop: "4px" }}>
+                    <input
+                      type="text"
+                      value={downloadPathInput}
+                      onChange={(e) => setDownloadPathInput(e.target.value)}
+                      placeholder="e.g. C:\Users\Username\Downloads"
+                      style={{
+                        flex: 1,
+                        padding: "10px 14px",
+                        background: "#25252b",
+                        border: "1px solid rgba(255, 255, 255, 0.08)",
+                        borderRadius: "8px",
+                        color: "#fff",
+                        fontSize: "13.5px",
+                        outline: "none"
+                      }}
+                    />
+                    <button 
+                      className="btn btn-primary" 
+                      onClick={handleSaveDownloadPath}
+                      style={{ margin: 0, padding: "10px 20px", fontSize: "13px" }}
+                    >
+                      Save Path
+                    </button>
                   </div>
                 </div>
               </div>
@@ -281,22 +318,55 @@ export default function SettingsPage() {
                 </div>
                 <div className="row-item">
                   <div className="ri-text">
-                    <b>Reduce motion</b>
-                    <span>Turn off card and viewer animations</span>
-                  </div>
-                  <div className="switch small">
-                    <div className="knob"></div>
-                  </div>
-                </div>
-                <div className="row-item">
-                  <div className="ri-text">
                     <b>Accent color</b>
-                    <span>Used for sync status and highlights</span>
+                    <span>Highlights, buttons, and loading states</span>
                   </div>
-                  <div style={{ display: "flex", gap: "8px" }}>
-                    <div style={{ width: "22px", height: "22px", borderRadius: "50%", background: "#2aabee", border: "2px solid #131316", cursor: "pointer" }}></div>
-                    <div style={{ width: "22px", height: "22px", borderRadius: "50%", background: "#d9c6f3", cursor: "pointer" }}></div>
-                    <div style={{ width: "22px", height: "22px", borderRadius: "50%", background: "#f0a13a", cursor: "pointer" }}></div>
+                  <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
+                    <div 
+                      onClick={() => changeAccentColor("blue")}
+                      style={{ 
+                        width: "22px", 
+                        height: "22px", 
+                        borderRadius: "50%", 
+                        background: "#2aabee", 
+                        cursor: "pointer",
+                        border: accentColor === "blue" ? "2.5px solid #fff" : "1.5px solid rgba(255,255,255,0.15)",
+                        boxShadow: accentColor === "blue" ? "0 0 10px rgba(42, 171, 238, 0.5)" : "none",
+                        transform: accentColor === "blue" ? "scale(1.15)" : "scale(1)",
+                        transition: "all 0.15s ease"
+                      }} 
+                      title="Telegram Blue"
+                    />
+                    <div 
+                      onClick={() => changeAccentColor("violet")}
+                      style={{ 
+                        width: "22px", 
+                        height: "22px", 
+                        borderRadius: "50%", 
+                        background: "#9b66f3", 
+                        cursor: "pointer",
+                        border: accentColor === "violet" ? "2.5px solid #fff" : "1.5px solid rgba(255,255,255,0.15)",
+                        boxShadow: accentColor === "violet" ? "0 0 10px rgba(155, 102, 243, 0.5)" : "none",
+                        transform: accentColor === "violet" ? "scale(1.15)" : "scale(1)",
+                        transition: "all 0.15s ease"
+                      }} 
+                      title="Royal Violet"
+                    />
+                    <div 
+                      onClick={() => changeAccentColor("orange")}
+                      style={{ 
+                        width: "22px", 
+                        height: "22px", 
+                        borderRadius: "50%", 
+                        background: "#f0a13a", 
+                        cursor: "pointer",
+                        border: accentColor === "orange" ? "2.5px solid #fff" : "1.5px solid rgba(255,255,255,0.15)",
+                        boxShadow: accentColor === "orange" ? "0 0 10px rgba(240, 161, 58, 0.5)" : "none",
+                        transform: accentColor === "orange" ? "scale(1.15)" : "scale(1)",
+                        transition: "all 0.15s ease"
+                      }} 
+                      title="Sunset Orange"
+                    />
                   </div>
                 </div>
               </div>
@@ -320,12 +390,7 @@ export default function SettingsPage() {
                         <span className="mono">{stats?.phone || phoneNumber}</span>
                       </div>
                     </div>
-                    <div className="row-item">
-                      <div className="ri-text">
-                        <b>Display name</b>
-                        <span>Personal User Account</span>
-                      </div>
-                    </div>
+
                     <div className="row-item">
                       <div className="ri-text">
                         <b>Local server</b>

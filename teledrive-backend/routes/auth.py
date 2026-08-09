@@ -121,9 +121,10 @@ async def set_channel(user_id: str, channel_id: str):
 async def get_user_stats(user_id: str):
     try:
         user_id = normalize_phone(user_id)
-        user_record = fetch_one("SELECT channel_id, original_quality FROM users WHERE phone = ?", (user_id,))
+        user_record = fetch_one("SELECT channel_id, original_quality, download_path FROM users WHERE phone = ?", (user_id,))
         channel_id = user_record.get("channel_id") if user_record else None
         original_quality = bool(user_record.get("original_quality", 0)) if user_record else False
+        download_path = user_record.get("download_path") if user_record else None
         
         files_count_record = fetch_one("SELECT COUNT(*) as count FROM files WHERE user_id = ? AND deleted_at IS NULL", (user_id,))
         files_count = files_count_record["count"] if files_count_record else 0
@@ -166,7 +167,8 @@ async def get_user_stats(user_id: str):
             "files_count": files_count,
             "folders_count": folders_count,
             "total_size": total_size,
-            "original_quality": original_quality
+            "original_quality": original_quality,
+            "download_path": download_path
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -178,5 +180,15 @@ async def set_original_quality(user_id: str, enabled: bool):
         val = 1 if enabled else 0
         execute_db("UPDATE users SET original_quality = ? WHERE phone = ?", (val, user_id))
         return {"status": "success", "original_quality": enabled}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/auth/set-download-path")
+async def set_download_path(user_id: str, path: str):
+    try:
+        user_id = normalize_phone(user_id)
+        path = path.strip() if path else None
+        execute_db("UPDATE users SET download_path = ? WHERE phone = ?", (path, user_id))
+        return {"status": "success", "download_path": path}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

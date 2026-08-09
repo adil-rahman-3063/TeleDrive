@@ -50,9 +50,7 @@ export default function Dropzone({
         setProgressPercent(0);
 
         // Upload single file and track real Telegram upload progress from stream
-        await uploadFile(phoneNumber!, folderId, file, (percent) => {
-          setProgressPercent(Math.round(percent));
-        });
+        await uploadFile(phoneNumber!, folderId, file);
 
         setProgressPercent(100);
       }

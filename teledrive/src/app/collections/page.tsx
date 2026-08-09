@@ -23,6 +23,7 @@ import {
   deleteFilePermanent, 
   syncTelegramChannel,
   moveFile,
+  getFileDownloadProgress,
   Folder, 
   FileMetadata, 
   BACKEND_URL 
@@ -177,6 +178,82 @@ export default function CollectionsPage() {
       showToast("Failed to move files", "error");
     }
   };
+
+  // Bulk Download States
+  const [showDownloadProgress, setShowDownloadProgress] = useState(false);
+  const [downloadItems, setDownloadItems] = useState<Array<{ id: string; name: string; progress: number; status: string }>>([]);
+
+  const handleBulkDownload = async () => {
+    if (selectedFileIds.length === 0) return;
+    
+    const itemsToDownload = filteredFiles
+      .filter(f => selectedFileIds.includes(f.id))
+      .map(f => ({
+        id: f.id,
+        name: f.file_name,
+        progress: 0,
+        status: "downloading"
+      }));
+      
+    setDownloadItems(itemsToDownload);
+    setShowDownloadProgress(true);
+
+    itemsToDownload.forEach(async (item) => {
+      try {
+        fetch(`${BACKEND_URL}/download/${phoneNumber}/${item.id}`).catch(() => {});
+      } catch (err) {
+        console.error("Failed to initiate download for:", item.name);
+      }
+    });
+  };
+
+  useEffect(() => {
+    if (!showDownloadProgress || downloadItems.length === 0) return;
+
+    let active = true;
+    let timer: NodeJS.Timeout;
+
+    const pollProgress = async () => {
+      try {
+        const updatedItems = await Promise.all(
+          downloadItems.map(async (item) => {
+            if (item.status === "cached" || item.progress >= 100) {
+              return { ...item, progress: 100, status: "cached" };
+            }
+            try {
+              const res = await getFileDownloadProgress(item.id);
+              return {
+                ...item,
+                progress: res.progress,
+                status: res.status
+              };
+            } catch (err) {
+              return item;
+            }
+          })
+        );
+
+        if (!active) return;
+        setDownloadItems(updatedItems);
+
+        const anyDownloading = updatedItems.some(item => item.status === "downloading" || item.progress < 100);
+        if (anyDownloading) {
+          timer = setTimeout(pollProgress, 1000);
+        } else {
+          showToast("All downloads completed!", "success");
+        }
+      } catch (err) {
+        console.error("Error polling bulk download progress:", err);
+      }
+    };
+
+    timer = setTimeout(pollProgress, 1000);
+
+    return () => {
+      active = false;
+      clearTimeout(timer);
+    };
+  }, [showDownloadProgress, downloadItems.length]);
 
   // Permanent delete confirmation modal
   const [permDeleteTarget, setPermDeleteTarget] = useState<{ type: "folder" | "file"; id: any; name: string } | null>(null);
@@ -1045,6 +1122,13 @@ export default function CollectionsPage() {
           <div style={{ width: "1px", height: "20px", background: "rgba(255, 255, 255, 0.1)" }} />
           <button 
             className="btn btn-ghost" 
+            onClick={handleBulkDownload}
+            style={{ margin: 0, fontSize: "13px", padding: "8px 14px", color: "var(--tg)" }}
+          >
+            Download
+          </button>
+          <button 
+            className="btn btn-ghost" 
             onClick={() => {
               setMoveTargetFolderId(null);
               setShowMoveModal(true);
@@ -1099,6 +1183,80 @@ export default function CollectionsPage() {
             <div className="modal-actions" style={{ marginTop: "20px" }}>
               <button className="modal-btn-secondary" onClick={() => setShowMoveModal(false)}>Cancel</button>
               <button className="modal-btn-primary" onClick={executeBulkMove}>Move Files</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Bulk Download Progress Modal */}
+      {showDownloadProgress && (
+        <div className="modal-overlay" onClick={() => {
+          const allDone = downloadItems.every(item => item.status === "cached");
+          if (allDone) {
+            setShowDownloadProgress(false);
+            setSelectedFileIds([]);
+          }
+        }}>
+          <div className="modal-box" style={{ maxWidth: "480px", maxHeight: "80vh", display: "flex", flexDirection: "column" }} onClick={(e) => e.stopPropagation()}>
+            <h3>Downloading Files</h3>
+            <p style={{ fontSize: "13px", color: "var(--muted)", marginBottom: "16px" }}>
+              Files are being saved directly to your custom download directory on your machine.
+            </p>
+            
+            <div style={{ 
+              display: "flex", 
+              flexDirection: "column", 
+              gap: "14px", 
+              overflowY: "auto", 
+              maxHeight: "350px", 
+              paddingRight: "6px" 
+            }}>
+              {downloadItems.map((item) => (
+                <div key={item.id} style={{ 
+                  background: "rgba(255, 255, 255, 0.02)", 
+                  padding: "12px", 
+                  borderRadius: "10px", 
+                  border: "1px solid rgba(255, 255, 255, 0.05)" 
+                }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: "13px", marginBottom: "6px", gap: "20px" }}>
+                    <span style={{ color: "#fff", fontWeight: 600, textOverflow: "ellipsis", overflow: "hidden", whiteSpace: "nowrap" }}>
+                      {item.name}
+                    </span>
+                    <span style={{ color: item.status === "cached" ? "#3f9a4d" : "var(--tg)", fontWeight: 500, flexShrink: 0 }}>
+                      {item.status === "cached" ? "Completed" : `${item.progress}%`}
+                    </span>
+                  </div>
+                  
+                  <div style={{ 
+                    width: "100%", 
+                    height: "6px", 
+                    background: "rgba(255, 255, 255, 0.08)", 
+                    borderRadius: "3px", 
+                    overflow: "hidden" 
+                  }}>
+                    <div style={{ 
+                      width: `${item.progress}%`, 
+                      height: "100%", 
+                      background: item.status === "cached" ? "#6fce7a" : "var(--tg)", 
+                      borderRadius: "3px",
+                      transition: "width 0.3s ease" 
+                    }} />
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="modal-actions" style={{ marginTop: "24px", flexShrink: 0 }}>
+              <button 
+                className="modal-btn-primary" 
+                style={{ width: "100%" }}
+                onClick={() => {
+                  setShowDownloadProgress(false);
+                  setSelectedFileIds([]);
+                }}
+              >
+                {downloadItems.every(item => item.status === "cached") ? "Done" : "Minimize & Continue in Background"}
+              </button>
             </div>
           </div>
         </div>

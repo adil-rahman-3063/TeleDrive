@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { getFileDownloadProgress } from "@/services/api";
+import { useToast } from "./Toast";
 
 interface MediaFile {
   id?: string;
@@ -82,11 +83,14 @@ export default function MediaViewer({
     };
   }, [isOpen, currentIndex, currentFile?.id]);
 
+  const { showToast } = useToast();
+
   if (!isOpen || files.length === 0) return null;
 
   const handleDownload = () => {
     if (currentFile.url) {
-      window.open(currentFile.url, "_blank");
+      fetch(currentFile.url).catch(() => {});
+      showToast("Download started on local server disk...", "info");
     }
   };
 

@@ -52,7 +52,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  // Poll upload progress globally
+  // Poll upload progress globally with self-throttling
   useEffect(() => {
     if (!isLoggedIn || !phoneNumber || backendOnline !== true) {
       setActiveUploads([]);
@@ -60,23 +60,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     let active = true;
+    let timer: NodeJS.Timeout;
+
     const fetchUploadProgress = async () => {
       try {
         const data = await getUploadProgress(phoneNumber);
-        if (active) {
-          setActiveUploads(data);
-        }
+        if (!active) return;
+        
+        setActiveUploads(data);
+
+        // If there are pending/running uploads, poll fast (2s). Otherwise, poll slow (15s).
+        const hasActive = data.some(up => up.status === "pending" || up.status === "uploading");
+        const nextDelay = hasActive ? 2000 : 15000;
+
+        timer = setTimeout(fetchUploadProgress, nextDelay);
       } catch (err) {
         console.error("Failed to fetch global upload progress:", err);
+        if (active) {
+          timer = setTimeout(fetchUploadProgress, 15000);
+        }
       }
     };
 
     fetchUploadProgress();
-    const interval = setInterval(fetchUploadProgress, 2000); // Check every 2 seconds
 
     return () => {
       active = false;
-      clearInterval(interval);
+      clearTimeout(timer);
     };
   }, [isLoggedIn, phoneNumber, backendOnline]);
 

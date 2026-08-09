@@ -81,7 +81,7 @@ export async function checkAuthStatus(phone: string): Promise<boolean> {
 
 export async function setChannel(phone: string, channelId: string) {
   try {
-    const res = await fetch(`${BACKEND_URL}/auth/set-channel?user_id=${phone}&channel_id=${channelId}`, {
+    const res = await fetch(`${BACKEND_URL}/auth/set-channel?user_id=${encodeURIComponent(phone)}&channel_id=${channelId}`, {
       method: "POST",
     });
     if (!res.ok) {
@@ -126,7 +126,7 @@ export async function getFiles(phone: string, folderId: string | number): Promis
 }
 
 export async function createFolder(phone: string, name: string, parentId?: number | null): Promise<Folder[]> {
-  const url = `${BACKEND_URL}/folders?user_id=${phone}&name=${encodeURIComponent(name)}` + (parentId ? `&parent_id=${parentId}` : '');
+  const url = `${BACKEND_URL}/folders?user_id=${encodeURIComponent(phone)}&name=${encodeURIComponent(name)}` + (parentId ? `&parent_id=${parentId}` : '');
   const res = await fetch(url, { method: "POST" });
   return res.json();
 }
@@ -245,6 +245,6 @@ export interface UserStats {
 }
 
 export async function getUserStats(phone: string): Promise<UserStats> {
-  const res = await fetch(`${BACKEND_URL}/auth/user-stats?user_id=${phone}`);
+  const res = await fetch(`${BACKEND_URL}/auth/user-stats?user_id=${encodeURIComponent(phone)}`);
   return res.json();
 }

@@ -1,0 +1,32 @@
+PRIVACY POLICY & TERMS OF SERVICE
+
+Last Updated: August 2026
+
+PLEASE READ THIS DISCLAIMER CAREFULLY BEFORE USING TELEDRIVE. BY USING THE APPLICATION, YOU AGREE TO BE BOUND BY ALL TERMS AND CONDITIONS.
+
+1. APPLICATION ARCHITECTURE & DATA FLOW
+TeleDrive is a self-hosted client interface that connects to the Telegram API to facilitate cloud storage. 
+* Telegram Backend Storage: TeleDrive does NOT operate any file storage servers, cloud databases, or content delivery networks. All media, documents, and files uploaded through TeleDrive are transmitted directly to your personal Telegram channel/group or saved messages.
+* No Middleman: Files do not pass through or reside on any servers owned by the developer of TeleDrive. Everything runs locally on your own machine.
+* Metadata Persistence: TeleDrive maintains a local SQLite database (teledrive.db) on your computer to store folder structures, synced file references, and connection states. This data never leaves your local system.
+
+2. DEVELOPER ACCESS & CONTROL
+Adil Rahiman (the creator and developer of TeleDrive) has ZERO access, control, or visibility over:
+- Your Telegram credentials (API ID, API Hash, phone number, sessions, or login codes).
+- The files, videos, photos, and messages you upload, stream, download, or delete.
+- Your database files or server configuration settings.
+Everything is processed strictly on your host machine and communicated directly to Telegram's official API servers. There is no remote tracking, analytics, or telemetry collected by the developer.
+
+3. USER RESPONSIBILITY & COMPLIANCE
+As the host and sole operator of your TeleDrive instance, you are entirely responsible for:
+- Compliance with Laws: You must ensure that all content uploaded and stored complies with local laws, international regulations, and copyright policies (DMCA).
+- Compliance with Telegram terms: You must comply with the official Telegram Terms of Service. Uploading prohibited content (including but not limited to copyrighted materials, pirated files, spam, or illicit content) is strictly at your own risk.
+
+4. TELEGRAM ACCOUNT RISKS & LIMITATIONS
+Using Telegram as a hosting backend is subject to Telegram's strict automated spam, bandwidth, and abuse filters. 
+- Account Restrictions / Bans: If you upload huge volumes of data, share download links excessively, or violate Telegram's Terms of Service, Telegram may restrict, rate-limit, temporarily block, or permanently terminate your Telegram account.
+- Data Loss: In the event that Telegram terminates your account, deletes your channels, or experiences service outages, you will permanently lose access to all files hosted on Telegram.
+- No Liability: You explicitly acknowledge and agree that Adil Rahiman has no liability or responsibility for any account restrictions, bans, rate limits, or data loss you may experience as a result of using TeleDrive. All account risks are borne solely by you.
+
+5. NO WARRANTIES
+TELEDRIVE IS PROVIDED "AS IS" AND "AS AVAILABLE", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND NONINFRINGEMENT. IN NO EVENT SHALL THE CREATOR (ADIL RAHIMAN) BE LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT, OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.

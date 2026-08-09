@@ -29,7 +29,7 @@ export default function SettingsPage() {
   const router = useRouter();
 
   const { showToast } = useToast();
-  const [activeSettingsPanel, setActiveSettingsPanel] = useState<"content" | "channels" | "appearance" | "account" | "storage" | "creator">("content");
+  const [activeSettingsPanel, setActiveSettingsPanel] = useState<"content" | "channels" | "appearance" | "account" | "storage" | "creator" | "privacy">("content");
 
   // Modal state for channel input
   const [showChannelModal, setShowChannelModal] = useState(false);
@@ -89,6 +89,8 @@ export default function SettingsPage() {
         setActiveSettingsPanel("account");
       } else if (tab === "creator") {
         setActiveSettingsPanel("creator");
+      } else if (tab === "privacy") {
+        setActiveSettingsPanel("privacy");
       }
     }
   }, [pathname, loading]);
@@ -186,17 +188,26 @@ export default function SettingsPage() {
                 </svg>
                 Storage & cache
               </button>
-              <button
-                className={activeSettingsPanel === "creator" ? "active" : ""}
-                onClick={() => setActiveSettingsPanel("creator")}
-              >
-                <svg viewBox="0 0 24 24">
-                  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z" />
-                </svg>
-                Creator & Support
-              </button>
-            </div>
-          </div>
+               <button
+                 className={activeSettingsPanel === "creator" ? "active" : ""}
+                 onClick={() => setActiveSettingsPanel("creator")}
+               >
+                 <svg viewBox="0 0 24 24">
+                   <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z" />
+                 </svg>
+                 Creator & Support
+               </button>
+               <button
+                 className={activeSettingsPanel === "privacy" ? "active" : ""}
+                 onClick={() => setActiveSettingsPanel("privacy")}
+               >
+                 <svg viewBox="0 0 24 24">
+                   <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                 </svg>
+                 Privacy & Disclaimer
+               </button>
+             </div>
+           </div>
 
           <div className="card">
             {/* Content Panel */}
@@ -517,6 +528,52 @@ export default function SettingsPage() {
                           adilrahman.cc
                         </a>
                       </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {activeSettingsPanel === "privacy" && (
+              <div className="settings-panel active">
+                <div className="card-label" style={{ color: "#f58f9b" }}>Privacy & Disclaimer</div>
+                <h2 style={{ fontSize: "20px" }}>Exhaustive Terms of Service</h2>
+                
+                <div style={{ display: "flex", flexDirection: "column", gap: "20px", marginTop: "10px" }}>
+                  <div style={{ padding: "14px 18px", background: "rgba(240, 68, 58, 0.08)", border: "1px solid rgba(240, 68, 58, 0.2)", borderRadius: "12px", color: "#f85a6a" }}>
+                    <b style={{ display: "block", fontSize: "14px", marginBottom: "4px" }}>⚠️ CRITICAL ACCOUNT RISK DISCLAIMER</b>
+                    <span style={{ fontSize: "13px", lineHeight: "1.5" }}>
+                      Using Telegram as a hosting backend violates its strict automated system filters if abuse or high volume is detected. You explicitly acknowledge that any account restrictions, rate limits, temporary blocks, or permanent bans are solely your problem and responsibility. The developer holds no control, access, or liability over your account or hosting data.
+                    </span>
+                  </div>
+
+                  <div style={{ display: "flex", flexDirection: "column", gap: "16px", color: "var(--muted-2)", fontSize: "13.5px", lineHeight: "1.6" }}>
+                    <div style={{ borderBottom: "1px solid rgba(255, 255, 255, 0.05)", paddingBottom: "14px" }}>
+                      <b style={{ color: "#fff", display: "block", marginBottom: "4px" }}>1. Telegram as Backend Storage</b>
+                      <span>
+                        TeleDrive does not operate, manage, or rent any file storage servers, databases, or content delivery networks. All files uploaded through TeleDrive are pushed directly to your personal Telegram channel or group. You have full ownership and direct access to view them on Telegram at any time.
+                      </span>
+                    </div>
+
+                    <div style={{ borderBottom: "1px solid rgba(255, 255, 255, 0.05)", paddingBottom: "14px" }}>
+                      <b style={{ color: "#fff", display: "block", marginBottom: "4px" }}>2. Zero Creator Control or Access</b>
+                      <span>
+                        The creator (Adil Rahiman) has absolutely zero visibility or control over your session key, phone number, SQLite database files, or target upload channels. Everything is handled locally on your server device.
+                      </span>
+                    </div>
+
+                    <div style={{ borderBottom: "1px solid rgba(255, 255, 255, 0.05)", paddingBottom: "14px" }}>
+                      <b style={{ color: "#fff", display: "block", marginBottom: "4px" }}>3. Compliance and Account Safety</b>
+                      <span>
+                        All content hosted is your sole responsibility. You must comply with local laws and Telegram's Terms of Service. In case of outages or accounts closure, data loss will occur, and the developer holds no liability.
+                      </span>
+                    </div>
+
+                    <div>
+                      <b style={{ color: "#fff", display: "block", marginBottom: "4px" }}>4. Full Legal Document</b>
+                      <span>
+                        You can view the full terms and conditions in the root folder of the project under the <a href="/privacy.txt" target="_blank" rel="noopener noreferrer" style={{ color: "var(--tg)", textDecoration: "underline" }}>PRIVACY.txt</a> file.
+                      </span>
                     </div>
                   </div>
                 </div>

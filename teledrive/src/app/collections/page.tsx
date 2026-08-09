@@ -21,6 +21,7 @@ import {
   deleteFolderPermanent, 
   deleteFilePermanent, 
   syncTelegramChannel,
+  moveFile,
   Folder, 
   FileMetadata, 
   BACKEND_URL 
@@ -89,6 +90,90 @@ export default function CollectionsPage() {
       setTimeout(() => setSyncStatus(null), 4000);
     } finally {
       setSyncing(false);
+    }
+  };
+
+  // Multi-Select States
+  const [selectedFileIds, setSelectedFileIds] = useState<string[]>([]);
+  const [isMouseDown, setIsMouseDown] = useState(false);
+  const [longPressTimeout, setLongPressTimeout] = useState<any>(null);
+  const [wasLongPressed, setWasLongPressed] = useState(false);
+  const [showMoveModal, setShowMoveModal] = useState(false);
+  const [moveTargetFolderId, setMoveTargetFolderId] = useState<string | null>(null);
+
+  // Global mouseup listener to cancel press & drag
+  useEffect(() => {
+    const handleGlobalMouseUp = () => {
+      setIsMouseDown(false);
+      if (longPressTimeout) {
+        clearTimeout(longPressTimeout);
+        setLongPressTimeout(null);
+      }
+      setTimeout(() => setWasLongPressed(false), 80);
+    };
+    window.addEventListener("mouseup", handleGlobalMouseUp);
+    return () => window.removeEventListener("mouseup", handleGlobalMouseUp);
+  }, [longPressTimeout]);
+
+  const toggleFileSelection = (fileId: string) => {
+    setSelectedFileIds(prev => 
+      prev.includes(fileId) ? prev.filter(id => id !== fileId) : [...prev, fileId]
+    );
+  };
+
+  const handleFileClick = (file: any, idx: number) => {
+    if (wasLongPressed) return;
+    if (selectedFileIds.length > 0) {
+      toggleFileSelection(file.id);
+    } else {
+      setViewerIndex(idx);
+      setViewerOpen(true);
+    }
+  };
+
+  const handleFileMouseDown = (fileId: string) => {
+    setIsMouseDown(true);
+    setWasLongPressed(false);
+    const timer = setTimeout(() => {
+      setWasLongPressed(true);
+      toggleFileSelection(fileId);
+    }, 500);
+    setLongPressTimeout(timer);
+  };
+
+  const handleFileMouseEnter = (fileId: string) => {
+    if (isMouseDown && selectedFileIds.length > 0) {
+      if (!selectedFileIds.includes(fileId)) {
+        setSelectedFileIds(prev => [...prev, fileId]);
+      }
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedFileIds.length === 0) return;
+    if (!confirm(`Are you sure you want to move the ${selectedFileIds.length} selected files to the trash bin?`)) return;
+
+    try {
+      showToast(`Moving ${selectedFileIds.length} files to trash...`, "info");
+      await Promise.all(selectedFileIds.map(id => deleteFile(phoneNumber, id)));
+      showToast("Files moved to trash", "success");
+      setSelectedFileIds([]);
+      loadData();
+    } catch (err) {
+      showToast("Failed to delete some files", "error");
+    }
+  };
+
+  const executeBulkMove = async () => {
+    try {
+      showToast(`Moving ${selectedFileIds.length} files...`, "info");
+      await Promise.all(selectedFileIds.map(id => moveFile(phoneNumber, id, moveTargetFolderId)));
+      showToast("Files moved successfully", "success");
+      setSelectedFileIds([]);
+      setShowMoveModal(false);
+      loadData();
+    } catch (err) {
+      showToast("Failed to move files", "error");
     }
   };
 
@@ -726,11 +811,15 @@ export default function CollectionsPage() {
                       const isImage = file.mime_type?.startsWith("image/") || /\.(jpg|jpeg|png|webp|heic)$/i.test(file.file_name);
                       const fileUrl = `${BACKEND_URL}/download/${phoneNumber}/${file.id}`;
                       const isHovered = hoveredFileId === file.id;
+                      const isSelected = selectedFileIds.includes(file.id);
                       return (
                         <div 
                           key={file.id} 
                           style={{ display: "flex", flexDirection: "column", gap: "6px" }}
-                          onMouseEnter={() => setHoveredFileId(file.id)}
+                          onMouseEnter={() => {
+                            setHoveredFileId(file.id);
+                            handleFileMouseEnter(file.id);
+                          }}
                           onMouseLeave={() => setHoveredFileId(null)}
                         >
                           <div
@@ -743,13 +832,35 @@ export default function CollectionsPage() {
                               alignItems: "center",
                               justifyContent: "center",
                               width: "100%",
-                              height: "100%"
+                              height: "100%",
+                              border: isSelected ? "3.5px solid #0a84ff" : "none",
+                              boxShadow: isSelected ? "0 0 15px rgba(10, 132, 255, 0.35)" : "none",
+                              transform: isSelected ? "scale(0.94)" : "scale(1)",
+                              transition: "border 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease",
                             }}
-                            onClick={() => {
-                              setViewerIndex(idx);
-                              setViewerOpen(true);
-                            }}
+                            onMouseDown={() => handleFileMouseDown(file.id)}
+                            onClick={() => handleFileClick(file, idx)}
                           >
+                            {isSelected && (
+                              <div style={{
+                                position: "absolute",
+                                top: "10px",
+                                right: "10px",
+                                background: "#0a84ff",
+                                borderRadius: "50%",
+                                width: "22px",
+                                height: "22px",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                zIndex: 6,
+                                boxShadow: "0 2px 8px rgba(0,0,0,0.3)"
+                              }}>
+                                <svg viewBox="0 0 24 24" style={{ width: "13px", height: "13px", stroke: "#fff", strokeWidth: 3, fill: "none" }}>
+                                  <polyline points="20 6 9 17 4 12" />
+                                </svg>
+                              </div>
+                            )}
                             {isImage && (
                               <img 
                                 src={fileUrl} 
@@ -903,6 +1014,88 @@ export default function CollectionsPage() {
             <div className="modal-actions">
               <button className="modal-btn-secondary" onClick={() => setPermDeleteTarget(null)}>Cancel</button>
               <button className="modal-btn-danger" onClick={executePermanentDelete}>Delete Forever</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* FLOATING BULK SELECTION ACTION BAR */}
+      {selectedFileIds.length > 0 && (
+        <div style={{
+          position: "fixed",
+          bottom: "32px",
+          left: "50%",
+          transform: "translateX(-50%)",
+          background: "#1b1b20",
+          border: "1px solid rgba(255, 255, 255, 0.08)",
+          borderRadius: "20px",
+          padding: "12px 24px",
+          display: "flex",
+          alignItems: "center",
+          gap: "20px",
+          boxShadow: "0 10px 40px rgba(0,0,0,0.5)",
+          zIndex: 9999
+        }}>
+          <span style={{ fontSize: "13.5px", fontWeight: 600, color: "#fff" }}>
+            {selectedFileIds.length} files selected
+          </span>
+          <div style={{ width: "1px", height: "20px", background: "rgba(255, 255, 255, 0.1)" }} />
+          <button 
+            className="btn btn-ghost" 
+            onClick={() => {
+              setMoveTargetFolderId(null);
+              setShowMoveModal(true);
+            }}
+            style={{ margin: 0, fontSize: "13px", padding: "8px 14px", color: "#0a84ff" }}
+          >
+            Move
+          </button>
+          <button 
+            className="btn danger-btn" 
+            onClick={handleBulkDelete}
+            style={{ margin: 0, fontSize: "13px", padding: "8px 14px" }}
+          >
+            Delete
+          </button>
+          <button 
+            className="btn btn-ghost" 
+            onClick={() => setSelectedFileIds([])}
+            style={{ margin: 0, fontSize: "13px", padding: "8px 14px", color: "var(--muted)" }}
+          >
+            Cancel
+          </button>
+        </div>
+      )}
+
+      {/* Bulk Move Modal */}
+      {showMoveModal && (
+        <div className="modal-overlay" onClick={() => setShowMoveModal(false)}>
+          <div className="modal-box" onClick={(e) => e.stopPropagation()}>
+            <h3>Move {selectedFileIds.length} Files</h3>
+            <p>Select target collection folder:</p>
+            <select
+              style={{
+                width: "100%",
+                padding: "12px",
+                borderRadius: "8px",
+                background: "#25252b",
+                border: "1px solid rgba(255,255,255,0.08)",
+                color: "#fff",
+                fontSize: "14px",
+                marginTop: "10px",
+                outline: "none"
+              }}
+              value={moveTargetFolderId || "root"}
+              onChange={(e) => setMoveTargetFolderId(e.target.value === "root" ? null : e.target.value)}
+            >
+              <option value="root">All collections (Root)</option>
+              {folders.map(folder => (
+                <option key={folder.id} value={folder.id}>{folder.name}</option>
+              ))}
+            </select>
+            <div className="modal-actions" style={{ marginTop: "20px" }}>
+              <button className="modal-btn-secondary" onClick={() => setShowMoveModal(false)}>Cancel</button>
+              <button className="modal-btn-primary" onClick={executeBulkMove}>Move Files</button>
             </div>
           </div>
         </div>

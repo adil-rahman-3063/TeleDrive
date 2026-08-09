@@ -65,17 +65,28 @@ export default function CollectionsPage() {
   const [renameValue, setRenameValue] = useState("");
 
   const [syncing, setSyncing] = useState(false);
+  const [syncStatus, setSyncStatus] = useState<string | null>(null);
 
   const handleSyncTelegram = async () => {
     if (!phoneNumber) return;
     setSyncing(true);
+    setSyncStatus("Scanning Telegram channel for untracked media...");
     showToast("Scanning Telegram channel history...", "info");
     try {
       const res = await syncTelegramChannel(phoneNumber);
-      showToast(`Sync complete! Indexed ${res.synced_count} untracked items to root.`, "success");
+      if (res.synced_count > 0) {
+        setSyncStatus(`Found and added ${res.synced_count} new files!`);
+        showToast(`Sync complete! Indexed ${res.synced_count} untracked items to root.`, "success");
+      } else {
+        setSyncStatus("No new media found. All up to date!");
+        showToast("Sync complete! No new media found.", "success");
+      }
       loadData();
+      setTimeout(() => setSyncStatus(null), 4000);
     } catch (err: any) {
+      setSyncStatus("Sync failed.");
       showToast(`Sync failed: ${err.message}`, "error");
+      setTimeout(() => setSyncStatus(null), 4000);
     } finally {
       setSyncing(false);
     }
@@ -382,38 +393,45 @@ export default function CollectionsPage() {
             )}
 
             {!viewingTrash && (
-              <button
-                className={`btn btn-primary ${syncing ? "loading" : ""}`}
-                onClick={handleSyncTelegram}
-                disabled={syncing}
-                style={{ 
-                  margin: 0, 
-                  padding: "8px 14px", 
-                  fontSize: "12.5px", 
-                  background: "rgba(10, 132, 255, 0.15)",
-                  color: "#0a84ff",
-                  border: "1px solid rgba(10, 132, 255, 0.25)",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "6px"
-                }}
-              >
-                {syncing ? (
-                  <>
-                    <svg className="spin" viewBox="0 0 24 24" style={{ width: "14px", height: "14px", stroke: "currentColor", fill: "none" }}>
-                      <circle cx="12" cy="12" r="10" strokeWidth="3" strokeDasharray="30 10" />
-                    </svg>
-                    Syncing...
-                  </>
-                ) : (
-                  <>
-                    <svg viewBox="0 0 24 24" style={{ width: "14px", height: "14px", stroke: "currentColor", fill: "none", strokeWidth: 2 }}>
-                      <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l.56-.56" />
-                    </svg>
-                    Sync Telegram
-                  </>
+              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                {syncStatus && (
+                  <span style={{ fontSize: "12px", color: "var(--muted)", whiteSpace: "nowrap", animation: "fadeIn 0.2s ease" }}>
+                    {syncStatus}
+                  </span>
                 )}
-              </button>
+                <button
+                  className={`btn btn-primary ${syncing ? "loading" : ""}`}
+                  onClick={handleSyncTelegram}
+                  disabled={syncing}
+                  style={{ 
+                    margin: 0, 
+                    padding: "8px 14px", 
+                    fontSize: "12.5px", 
+                    background: "rgba(10, 132, 255, 0.15)",
+                    color: "#0a84ff",
+                    border: "1px solid rgba(10, 132, 255, 0.25)",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "6px"
+                  }}
+                >
+                  {syncing ? (
+                    <>
+                      <svg className="spin" viewBox="0 0 24 24" style={{ width: "14px", height: "14px", stroke: "currentColor", fill: "none" }}>
+                        <circle cx="12" cy="12" r="10" strokeWidth="3" strokeDasharray="30 10" />
+                      </svg>
+                      Syncing...
+                    </>
+                  ) : (
+                    <>
+                      <svg viewBox="0 0 24 24" style={{ width: "14px", height: "14px", stroke: "currentColor", fill: "none", strokeWidth: 2 }}>
+                        <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l.56-.56" />
+                      </svg>
+                      Sync Telegram
+                    </>
+                  )}
+                </button>
+              </div>
             )}
           </div>
         </div>

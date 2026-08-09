@@ -34,30 +34,9 @@ def get_files(user_id: str, folder_id: str):
         
     return data
 
-# 🔥 Download file using file_id (background caching)
-async def bg_cache_download(user_id: str, channel_id, message_id, cache_path: str):
-    tmp_path = cache_path + ".tmp"
-    try:
-        if os.path.exists(cache_path) or os.path.exists(tmp_path):
-            return
-        client = await get_client_and_connect(user_id)
-        message = await client.get_messages(channel_id, ids=message_id)
-        if message and message.media:
-            os.makedirs(os.path.dirname(cache_path), exist_ok=True)
-            await message.download_media(file=tmp_path)
-            if os.path.exists(tmp_path):
-                os.rename(tmp_path, cache_path)
-    except Exception as e:
-        print("BG Cache Download failed:", e)
-        if os.path.exists(tmp_path):
-            try:
-                os.remove(tmp_path)
-            except Exception:
-                pass
-
-# 🔥 Download file using file_id (Range-compliant streaming + background caching)
+# 🔥 Download file using file_id (Range-compliant streaming + inline write-through caching)
 @router.get("/download/{user_id}/{file_id}")
-async def download_file(user_id: str, file_id: str, request: Request, background_tasks: BackgroundTasks):
+async def download_file(user_id: str, file_id: str, request: Request):
     record = fetch_one("SELECT * FROM files WHERE id = ?", (file_id,))
     if not record:
         raise HTTPException(status_code=404, detail="File not found")
@@ -83,9 +62,6 @@ async def download_file(user_id: str, file_id: str, request: Request, background
             channel_id = int(channel_id)
         except ValueError:
             pass
-
-    # Start caching in background so future requests load instantly from disk
-    background_tasks.add_task(bg_cache_download, user_id, channel_id, message_id, cache_path)
 
     client = await get_client_and_connect(user_id)
     message = await client.get_messages(channel_id, ids=message_id)
@@ -113,13 +89,43 @@ async def download_file(user_id: str, file_id: str, request: Request, background
     content_length = end_byte - start_byte + 1
 
     async def stream_generator():
-        async for chunk in client.iter_download(
-            message.media,
-            offset=start_byte,
-            request_size=512 * 1024, # 512KB chunks for direct streaming throughput
-            limit=content_length
-        ):
-            yield chunk
+        tmp_path = cache_path + ".tmp"
+        os.makedirs(os.path.dirname(cache_path), exist_ok=True)
+
+        # Cache only if it's a full request (no Range or full Range)
+        should_cache = (start_byte == 0 and end_byte == total_size - 1)
+        f = None
+        if should_cache:
+            try:
+                f = open(tmp_path, "wb")
+            except Exception as e:
+                print("Failed to open cache temp file:", e)
+                should_cache = False
+
+        try:
+            async for chunk in client.iter_download(
+                message.media,
+                offset=start_byte,
+                request_size=512 * 1024, # 512KB chunks for direct streaming throughput
+                limit=content_length
+            ):
+                if should_cache and f:
+                    f.write(chunk)
+                yield chunk
+        finally:
+            if f:
+                f.close()
+            if should_cache and os.path.exists(tmp_path):
+                if os.path.getsize(tmp_path) == total_size:
+                    try:
+                        os.rename(tmp_path, cache_path)
+                    except Exception as e:
+                        print("Failed to save cached file:", e)
+                else:
+                    try:
+                        os.remove(tmp_path)
+                    except Exception:
+                        pass
 
     headers = {
         "Accept-Ranges": "bytes",

@@ -2067,6 +2067,77 @@ svg {
   }
 }
 
+.collections-layout {
+  display: flex;
+  gap: 24px;
+  align-items: flex-start;
+  width: 100%;
+}
+
+.collections-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.collections-sidebar {
+  flex-shrink: 0;
+  width: 280px;
+  position: sticky;
+  top: 24px;
+}
+
+@media (max-width: 900px) {
+  .collections-layout {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .collections-sidebar {
+    width: 100%;
+    position: static;
+    margin-bottom: 16px;
+    order: -1; /* Place upload box on top on mobile/tablet */
+  }
+}
+
+@media (max-width: 600px) {
+  .settings-nav {
+    flex-direction: row !important;
+    overflow-x: auto;
+    padding-bottom: 8px;
+    gap: 8px;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+  .settings-nav::-webkit-scrollbar {
+    display: none;
+  }
+  .settings-nav button {
+    white-space: nowrap;
+    padding: 10px 14px;
+    font-size: 13px;
+  }
+  .search-controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .filter-chips {
+    overflow-x: auto;
+    padding-bottom: 4px;
+    scrollbar-width: none;
+  }
+  .filter-chips::-webkit-scrollbar {
+    display: none;
+  }
+  .filter-chip {
+    white-space: nowrap;
+  }
+  .dropzone-square {
+    max-width: 100% !important;
+    aspect-ratio: auto !important;
+    min-height: auto !important;
+  }
+}
+
 @media (max-width: 500px) {
   .collections-grid {
     grid-template-columns: 1fr !important;

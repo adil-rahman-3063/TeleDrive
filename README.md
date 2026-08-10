@@ -21,11 +21,14 @@ Upload, organize, and stream your photos, videos, and files — backed by Telegr
 - 🖼️ **Media Viewer** — Full-screen image/video viewer with filmstrip navigation
 - 🔄 **Auto-sync** — Files are stored in your Telegram channel, accessible anywhere
 - 🗑️ **Trash & Restore** — Soft-delete with 30-day auto-purge, or restore instantly
+- ⚡ **Real-time Progress** — WebSockets provide instant upload/download tracking
+- 🎬 **Native Video Streaming** — HTTP Range request support for instant video scrubbing
+- 🔄 **Background Processing** — Caches media in the background without freezing the UI
 - 🌙 **Dark / Light Mode** — System-aware theme with manual toggle
 - 📱 **Channel Support** — Use private channels for organized storage
 - 🔐 **Self-hosted** — Your data stays on your Telegram account, not someone else's server
-- ⚡ **Local Caching** — Downloaded files are cached for instant repeat access
-- 🎬 **Video Previews** — Hover-to-play video thumbnails in grid view
+- 💾 **Intelligent Local Caching** — Instantly loads previously downloaded files without re-downloading
+- 🎞️ **Video Previews** — Hover-to-play video thumbnails in grid view
 
 ## 🏗️ Tech Stack
 
@@ -168,6 +171,28 @@ Contributions are welcome! Please:
 ## 📄 License
 
 This project is licensed under the [MIT License](LICENSE).
+
+## 👨‍💻 Creator
+
+This project was built with passion by **Adil Rahiman**.
+
+## 💖 Support & Contributions
+
+If you find this project useful and want to support its ongoing development, consider buying me a coffee or donating!
+
+<div align="left" style="display: flex; gap: 20px;">
+  
+### PayPal
+**Email:** `adilrahman3063@gmail.com`
+
+### Google Pay QR Code
+<img src="teledrive/public/GooglePay_QR.png" alt="Google Pay QR Code" width="150"/>
+
+</div>
+
+## 🎨 Credits
+
+- **Homepage UI:** Special thanks to [Denis Dod (Dribbble)](https://dribbble.com/den4dens) for the beautiful homepage UI design and inspiration.
 
 ---
 

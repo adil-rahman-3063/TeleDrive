@@ -125,6 +125,12 @@ export async function getFolders(phone: string, parentId?: number | null): Promi
   return res.json();
 }
 
+export async function getFolder(phone: string, folderId: string | number): Promise<Folder> {
+  const res = await fetch(`${BACKEND_URL}/folder/${phone}/${folderId}`);
+  if (!res.ok) throw new Error("Folder not found");
+  return res.json();
+}
+
 export async function getFiles(phone: string, folderId: string | number): Promise<FileMetadata[]> {
   const res = await fetch(`${BACKEND_URL}/files/${phone}/${folderId}`);
   return res.json();
@@ -140,6 +146,15 @@ export async function renameFolder(phone: string, folderId: number, newName: str
   const res = await fetch(`${BACKEND_URL}/folders/${phone}/${folderId}/rename?new_name=${encodeURIComponent(newName)}`, {
     method: "PUT"
   });
+  if (!res.ok) throw new Error("Failed to rename folder");
+  return res.json();
+}
+
+export async function renameFile(phone: string, fileId: string, newName: string) {
+  const res = await fetch(`${BACKEND_URL}/files/${phone}/${fileId}/rename?new_name=${encodeURIComponent(newName)}`, {
+    method: "PUT"
+  });
+  if (!res.ok) throw new Error("Failed to rename file");
   return res.json();
 }
 

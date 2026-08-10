@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useParams, useSearchParams } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/components/Toast";
 import TopNav from "@/components/TopNav";
@@ -9,11 +9,15 @@ import CollectionCard from "@/components/CollectionCard";
 import MediaViewer from "@/components/MediaViewer";
 import Dropzone from "@/components/Dropzone";
 import Footer from "@/components/Footer";
+import ContextMenu from "@/components/ContextMenu";
+import DownloadWidget from "@/components/DownloadWidget";
+import TrashView from "@/components/TrashView";
 import { 
   getFolders, 
   getFiles, 
   createFolder, 
   renameFolder, 
+  renameFile,
   deleteFolder, 
   deleteFile, 
   getTrash, 
@@ -24,6 +28,7 @@ import {
   syncTelegramChannel,
   moveFile,
   getFileDownloadProgress,
+  getFolder,
   Folder, 
   FileMetadata, 
   BACKEND_URL 
@@ -39,7 +44,7 @@ const grads = [
 ];
 
 export default function CollectionsPage() {
-  const { isLoggedIn, phoneNumber, loading, autoplayVideos, showFileNames, backendOnline } = useAuth();
+  const { isLoggedIn, phoneNumber, loading, autoplayVideos, showFileNames, backendOnline, downloadProgressMap } = useAuth();
   const router = useRouter();
 
   // Folders and Files states
@@ -52,6 +57,13 @@ export default function CollectionsPage() {
   const [trashFiles, setTrashFiles] = useState<FileMetadata[]>([]);
   const [viewingTrash, setViewingTrash] = useState(false);
 
+  const params = useParams();
+  const searchParams = useSearchParams();
+  
+  const folderIdParam = params?.folderId;
+  const activeFolderId = Array.isArray(folderIdParam) ? folderIdParam[0] : (folderIdParam as string | undefined) || null;
+  const folderNameParam = searchParams.get("name");
+
   // Navigation states
   const [activeFolder, setActiveFolder] = useState<Folder | null>(null);
   
@@ -63,9 +75,13 @@ export default function CollectionsPage() {
   // Custom Delete Choice Modal
   const [deleteTarget, setDeleteTarget] = useState<{ type: "folder" | "file"; id: any; name: string } | null>(null);
 
+  // Context Menu State
+  const [contextMenu, setContextMenu] = useState<{ x: number, y: number, type: 'file' | 'folder', item: any } | null>(null);
+
   // Rename modal state
   const [showRenameModal, setShowRenameModal] = useState(false);
-  const [renameValue, setRenameValue] = useState("");
+  const [itemToRename, setItemToRename] = useState<{ type: 'file' | 'folder', item: any } | null>(null);
+  const [newTitle, setNewTitle] = useState("");
 
   const [syncing, setSyncing] = useState(false);
   const [syncStatus, setSyncStatus] = useState<string | null>(null);
@@ -94,8 +110,6 @@ export default function CollectionsPage() {
       setSyncing(false);
     }
   };
-
-  const [imageProgresses, setImageProgresses] = useState<Record<string, { progress: number; status: string }>>({});
 
   // Multi-Select States
   const [selectedFileIds, setSelectedFileIds] = useState<string[]>([]);
@@ -182,7 +196,8 @@ export default function CollectionsPage() {
   };
 
   // Bulk Download States
-  const [showDownloadProgress, setShowDownloadProgress] = useState(false);
+  const [showDownloadProgress, setShowDownloadProgress] = useState(true);
+  const [isDownloadWidgetMinimized, setIsDownloadWidgetMinimized] = useState(true);
   const [downloadItems, setDownloadItems] = useState<Array<{ id: string; name: string; progress: number; status: string }>>([]);
 
   const handleBulkDownload = async () => {
@@ -199,119 +214,22 @@ export default function CollectionsPage() {
       
     setDownloadItems(itemsToDownload);
     setShowDownloadProgress(true);
+    setIsDownloadWidgetMinimized(false);
 
     itemsToDownload.forEach((item) => {
       try {
-        const link = document.createElement("a");
-        link.href = `${BACKEND_URL}/download/${phoneNumber}/${item.id}`;
-        link.setAttribute("download", item.name);
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+        const url = `${BACKEND_URL}/download/${phoneNumber}/${item.id}?priority=1&download=1`;
+        fetch(url).catch(() => {});
       } catch (err) {
         console.error("Failed to initiate download for:", item.name);
       }
     });
+    
+    showToast(`Downloading ${itemsToDownload.length} items to your local storage folder...`, "info");
   };
 
-  useEffect(() => {
-    if (!showDownloadProgress || downloadItems.length === 0) return;
 
-    let active = true;
-    let timer: NodeJS.Timeout;
 
-    const pollProgress = async () => {
-      try {
-        const updatedItems = await Promise.all(
-          downloadItems.map(async (item) => {
-            if (item.status === "cached" || item.progress >= 100) {
-              return { ...item, progress: 100, status: "cached" };
-            }
-            try {
-              const res = await getFileDownloadProgress(item.id);
-              return {
-                ...item,
-                progress: res.progress,
-                status: res.status
-              };
-            } catch (err) {
-              return item;
-            }
-          })
-        );
-
-        if (!active) return;
-        setDownloadItems(updatedItems);
-
-        const anyDownloading = updatedItems.some(item => item.status === "downloading" || item.progress < 100);
-        if (anyDownloading) {
-          timer = setTimeout(pollProgress, 1000);
-        } else {
-          showToast("All downloads completed!", "success");
-        }
-      } catch (err) {
-        console.error("Error polling bulk download progress:", err);
-      }
-    };
-
-    timer = setTimeout(pollProgress, 1000);
-
-    return () => {
-      active = false;
-      clearTimeout(timer);
-    };
-  }, [showDownloadProgress, downloadItems.length]);
-
-  useEffect(() => {
-    if (files.length === 0 || viewingTrash) return;
-
-    // Find all uncached image files
-    const uncachedImages = files.filter(f => {
-      const isImage = f.mime_type?.startsWith("image/") || /\.(jpg|jpeg|png|webp|heic)$/i.test(f.file_name);
-      // Wait: check if file has is_cached property, if we don't have it, assume false
-      return isImage && !(f as any).is_cached;
-    });
-
-    if (uncachedImages.length === 0) return;
-
-    let active = true;
-    const intervals: Record<string, NodeJS.Timeout> = {};
-
-    uncachedImages.forEach(file => {
-      const poll = async () => {
-        try {
-          const progressData = await getFileDownloadProgress(file.id);
-          if (!active) return;
-
-          setImageProgresses(prev => ({
-            ...prev,
-            [file.id]: progressData
-          }));
-
-          if (progressData.status === "cached" || progressData.progress >= 100) {
-            // Mark as cached in local files array
-            setFiles(prevFiles => 
-              prevFiles.map(f => f.id === file.id ? { ...f, is_cached: true } : f)
-            );
-            clearInterval(intervals[file.id]);
-          } else if (progressData.status === "not_started") {
-            // Stop polling idle files to prevent terminal flooding
-            clearInterval(intervals[file.id]);
-          }
-        } catch (err) {
-          console.error("Error polling image download progress:", err);
-        }
-      };
-
-      poll();
-      intervals[file.id] = setInterval(poll, 1000);
-    });
-
-    return () => {
-      active = false;
-      Object.values(intervals).forEach(clearInterval);
-    };
-  }, [files, viewingTrash]);
 
   // Permanent delete confirmation modal
   const [permDeleteTarget, setPermDeleteTarget] = useState<{ type: "folder" | "file"; id: any; name: string } | null>(null);
@@ -348,19 +266,38 @@ export default function CollectionsPage() {
   // Fetch folders and files
   const loadData = async () => {
     if (!phoneNumber) return;
-    setDataLoading(true);
+    
+    // Only show loading skeletons if we have no data yet
+    if (folders.length === 0 && files.length === 0) {
+      setDataLoading(true);
+    }
+    
     try {
       if (viewingTrash) {
         const trash = await getTrash(phoneNumber);
         setTrashFolders(trash.folders || []);
         setTrashFiles(trash.files || []);
       } else {
-        const parentId = activeFolder ? activeFolder.id : null;
-        const foldersList = await getFolders(phoneNumber, parentId);
+        const foldersList = await getFolders(phoneNumber, activeFolderId ? parseInt(activeFolderId) : null);
         
-        const currentFolderId = activeFolder ? activeFolder.id : "root";
+        const currentFolderId = activeFolderId ? activeFolderId : "root";
         const filesList = await getFiles(phoneNumber, currentFolderId);
         
+        if (activeFolderId) {
+          if (folderNameParam) {
+            setActiveFolder({ id: parseInt(activeFolderId), name: folderNameParam, parent_id: null, user_id: phoneNumber });
+          } else {
+            try {
+              const f = await getFolder(phoneNumber, activeFolderId);
+              setActiveFolder(f);
+            } catch {
+              setActiveFolder(null);
+            }
+          }
+        } else {
+          setActiveFolder(null);
+        }
+
         setFolders(foldersList || []);
         setFiles(filesList || []);
       }
@@ -380,7 +317,7 @@ export default function CollectionsPage() {
     if (backendOnline === true) {
       loadData();
     }
-  }, [isLoggedIn, phoneNumber, activeFolder, viewingTrash, loading, backendOnline]);
+  }, [isLoggedIn, phoneNumber, activeFolderId, viewingTrash, loading, backendOnline]);
 
 
   if (loading || !isLoggedIn) {
@@ -403,27 +340,27 @@ export default function CollectionsPage() {
     }
   };
 
-  // Rename folder
-  const openRenameModal = () => {
-    if (!activeFolder) return;
-    setRenameValue(activeFolder.name);
+  const openRenameModal = (type: 'file' | 'folder', item: any) => {
+    setItemToRename({ type, item });
+    setNewTitle(type === 'folder' ? item.name : item.file_name);
     setShowRenameModal(true);
   };
 
-  const handleRenameActiveFolder = async () => {
-    if (!activeFolder) return;
-    const newName = renameValue.trim();
-    if (!newName) return;
-    setShowRenameModal(false);
-
+  const handleRename = async () => {
+    if (!newTitle.trim() || !itemToRename) return;
     try {
-      await renameFolder(phoneNumber, activeFolder.id, newName);
-      setActiveFolder({ ...activeFolder, name: newName });
-      showToast("Collection renamed", "success");
+      if (itemToRename.type === 'folder') {
+        await renameFolder(phoneNumber, itemToRename.item.id, newTitle.trim());
+      } else {
+        await renameFile(phoneNumber, itemToRename.item.id, newTitle.trim());
+      }
+      setShowRenameModal(false);
+      setItemToRename(null);
       loadData();
+      showToast(`${itemToRename.type === 'folder' ? 'Collection' : 'File'} renamed`, "success");
     } catch (err) {
-      showToast("Failed to rename collection", "error");
-      console.error("Failed to rename folder:", err);
+      console.error(err);
+      showToast(`Failed to rename ${itemToRename.type}`, "error");
     }
   };
 
@@ -445,7 +382,7 @@ export default function CollectionsPage() {
     try {
       if (deleteTarget.type === "folder") {
         await deleteFolder(phoneNumber, deleteTarget.id);
-        setActiveFolder(null);
+        router.push("/collections");
       } else {
         await deleteFile(phoneNumber, deleteTarget.id);
         setViewerOpen(false);
@@ -463,7 +400,7 @@ export default function CollectionsPage() {
     try {
       if (deleteTarget.type === "folder") {
         await deleteFolderPermanent(phoneNumber, deleteTarget.id);
-        setActiveFolder(null);
+        router.push("/collections");
       } else {
         await deleteFilePermanent(phoneNumber, deleteTarget.id);
         setViewerOpen(false);
@@ -545,6 +482,21 @@ export default function CollectionsPage() {
   const hasFolders = folders.length > 0;
   const hasFiles = files.length > 0;
 
+  const handleSingleDownload = (fileId: string) => {
+    const file = files.find(f => f.id === fileId);
+    if (!file) return;
+    
+    setDownloadItems(prev => {
+      if (prev.some(i => i.id === fileId)) return prev;
+      return [...prev, { id: file.id, name: file.file_name, progress: 0, status: "downloading" }];
+    });
+    
+    setShowDownloadProgress(true);
+    setIsDownloadWidgetMinimized(false);
+    const url = `${BACKEND_URL}/download/${phoneNumber}/${file.id}?priority=1&download=1`;
+    fetch(url).catch(() => {});
+  };
+
   return (
     <>
       <TopNav />
@@ -553,7 +505,7 @@ export default function CollectionsPage() {
       <div className="view active" id="view-collections">
         <div className="crumbs" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div>
-            <b onClick={() => { setActiveFolder(null); setViewingTrash(false); }} style={{ cursor: "pointer" }}>All collections</b>
+            <b onClick={() => { router.push("/collections"); setViewingTrash(false); }} style={{ cursor: "pointer" }}>All collections</b>
             {viewingTrash && (
               <>
                 <span className="sep">/</span>
@@ -573,7 +525,7 @@ export default function CollectionsPage() {
               <>
                 <button
                   className="btn btn-ghost"
-                  onClick={openRenameModal}
+                  onClick={() => openRenameModal('folder', activeFolder)}
                   style={{ margin: 0, padding: "8px 12px", fontSize: "12px", color: "var(--tg)" }}
                 >
                   Rename
@@ -634,92 +586,16 @@ export default function CollectionsPage() {
 
         {/* TRASH VIEW PANEL */}
         {viewingTrash ? (
-          <div className="fade-in">
-            <div style={{ padding: "16px 20px", background: "rgba(220, 53, 69, 0.05)", border: "1px solid rgba(220, 53, 69, 0.15)", borderRadius: "12px", color: "#f58f9b", fontSize: "13px", marginBottom: "20px" }}>
-              ✦ Deleted folders and files are temporarily stored here. They will be automatically and permanently purged from Telegram after 24 hours.
-            </div>
-
-            {/* Trash Folders */}
-            <div className="section-head">
-              <h4 style={{ color: "#f58f9b" }}>Deleted Collections</h4>
-              <span>{trashFolders.length} folders</span>
-            </div>
-            {trashFolders.length === 0 ? (
-              <p style={{ color: "var(--muted)", fontSize: "13.5px", margin: "10px 0 24px 0" }}>No deleted folders</p>
-            ) : (
-              <div className="collections-grid" style={{ marginBottom: "24px" }}>
-                {trashFolders.map((folder) => (
-                  <div key={folder.id} className="coll-card" style={{ border: "1px solid rgba(255,255,255,0.04)" }}>
-                    <div className="coll-cover" style={{ background: "rgba(255, 255, 255, 0.03)" }}></div>
-                    <div className="coll-body">
-                      <h3>{folder.name}</h3>
-                      <div style={{ display: "flex", gap: "6px", marginTop: "8px" }}>
-                        <button className="btn btn-primary" onClick={() => handleRestoreFolder(folder.id)} style={{ margin: 0, padding: "4px 8px", fontSize: "11px", height: "auto" }}>
-                          Restore
-                        </button>
-                        <button className="btn danger-btn" onClick={() => handlePermanentDeleteTrashFolder(folder.id, folder.name)} style={{ margin: 0, padding: "4px 8px", fontSize: "11px", height: "auto" }}>
-                          Delete Forever
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* Trash Files */}
-            <div className="section-head" style={{ borderTop: "1px solid rgba(255,255,255,0.06)", paddingTop: "20px" }}>
-              <h4 style={{ color: "#f58f9b" }}>Deleted Files</h4>
-              <span>{trashFiles.length} files</span>
-            </div>
-            {trashFiles.length === 0 ? (
-              <p style={{ color: "var(--muted)", fontSize: "13.5px", margin: "10px 0" }}>No deleted files</p>
-            ) : (
-              <div className="media-grid" style={{ marginTop: "12px" }}>
-                {trashFiles.map((file, idx) => {
-                  const isImage = file.mime_type?.startsWith("image/") || /\.(jpg|jpeg|png|webp|heic)$/i.test(file.file_name);
-                  const fileUrl = `${BACKEND_URL}/download/${phoneNumber}/${file.id}`;
-                  return (
-                    <div 
-                      key={file.id} 
-                      className="media-grid-item" 
-                      style={{ 
-                        background: grads[idx % grads.length], 
-                        cursor: "default",
-                        overflow: "hidden",
-                        position: "relative",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center"
-                      }}
-                    >
-                      {isImage && (
-                        <img 
-                          src={fileUrl} 
-                          alt={file.file_name} 
-                          style={{ width: "100%", height: "100%", objectFit: "cover", position: "absolute", top: 0, left: 0 }} 
-                          loading="lazy"
-                        />
-                      )}
-                      <div className="media-hover" style={{ opacity: 1, background: "rgba(19, 19, 22, 0.8)", display: "flex", flexDirection: "column", gap: "6px", padding: "10px", zIndex: 3 }}>
-                        <span style={{ fontSize: "11px", color: "#fff", textOverflow: "ellipsis", overflow: "hidden", whiteSpace: "nowrap", width: "100%", textAlign: "center" }}>
-                          {file.file_name}
-                        </span>
-                        <div style={{ display: "flex", gap: "4px", width: "100%" }}>
-                          <button className="btn btn-primary" onClick={() => handleRestoreFile(file.id)} style={{ flex: 1, margin: 0, padding: "4px", fontSize: "10px", height: "auto" }}>
-                            Restore
-                          </button>
-                          <button className="btn danger-btn" onClick={() => handlePermanentDeleteTrashFile(file.id, file.file_name)} style={{ flex: 1, margin: 0, padding: "4px", fontSize: "10px", height: "auto" }}>
-                            Purge
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
+          <TrashView
+            trashFolders={trashFolders}
+            trashFiles={trashFiles}
+            phoneNumber={phoneNumber}
+            grads={grads}
+            onRestoreFolder={handleRestoreFolder}
+            onRestoreFile={handleRestoreFile}
+            onPurgeFolder={handlePermanentDeleteTrashFolder}
+            onPurgeFile={handlePermanentDeleteTrashFile}
+          />
         ) : (
           /* STANDARD DIRECTORY LISTING */
           <div>
@@ -831,14 +707,24 @@ export default function CollectionsPage() {
                   ) : (
                     <div className="collections-grid fade-in">
                       {filteredFolders.map((folder) => (
-                        <CollectionCard
-                          key={folder.id}
-                          title={folder.name}
-                          subCount={0}
-                          fileCount={0}
-                          thumbnailUrl={folder.thumbnail_file_id ? `${BACKEND_URL}/download/${phoneNumber}/${folder.thumbnail_file_id}` : null}
-                          onClick={() => setActiveFolder(folder)}
-                        />
+                        <div 
+                          key={folder.id} 
+                          onContextMenu={(e) => {
+                            e.preventDefault();
+                            setContextMenu({ x: e.clientX, y: e.clientY, type: 'folder', item: folder });
+                          }}
+                        >
+                          <CollectionCard
+                            title={folder.name}
+                            subCount={0}
+                            fileCount={0}
+                            onClick={() => {
+                              router.push(`/collections/${folder.id}?name=${encodeURIComponent(folder.name)}`);
+                              setSearchQuery("");
+                            }}
+                            thumbnailUrl={folder.thumbnail_file_id ? `${BACKEND_URL}/download/${phoneNumber}/${folder.thumbnail_file_id}` : undefined}
+                          />
+                        </div>
                       ))}
 
                       {/* Trash Card inside root collections */}
@@ -893,8 +779,6 @@ export default function CollectionsPage() {
                   )}
                 </div>
 
-
-
                 {/* Active Files Grid */}
                 {(activeFolder || hasFiles) && (
                   <div className="fade-in">
@@ -932,6 +816,10 @@ export default function CollectionsPage() {
                             handleFileMouseEnter(file.id);
                           }}
                           onMouseLeave={() => setHoveredFileId(null)}
+                          onContextMenu={(e) => {
+                            e.preventDefault();
+                            setContextMenu({ x: e.clientX, y: e.clientY, type: 'file', item: file });
+                          }}
                         >
                           <div
                             className="media-grid-item"
@@ -980,28 +868,17 @@ export default function CollectionsPage() {
                                 loading="lazy"
                               />
                             )}
-                            {isImage && !(file as any).is_cached && imageProgresses[file.id] && imageProgresses[file.id].progress < 100 && (
-                              <div style={{
-                                position: "absolute",
-                                top: 0,
-                                left: 0,
-                                right: 0,
-                                bottom: 0,
-                                background: "rgba(10, 10, 12, 0.75)",
-                                backdropFilter: "blur(4px)",
-                                display: "flex",
-                                flexDirection: "column",
-                                alignItems: "center",
-                                justifyContent: "center",
-                                gap: "6px",
-                                zIndex: 5,
-                                color: "#fff"
-                              }}>
-                                <svg className="spin" viewBox="0 0 24 24" style={{ width: "22px", height: "22px", stroke: "var(--tg)", fill: "none" }}>
-                                  <circle cx="12" cy="12" r="10" strokeWidth="3" strokeDasharray="30 10" />
-                                </svg>
-                                <span style={{ fontSize: "11px", fontWeight: 600 }}>{imageProgresses[file.id].progress}%</span>
-                                <span style={{ fontSize: "8.5px", color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.5px" }}>Caching</span>
+                            {isImage && !(file as any).is_cached && downloadProgressMap[file.id] && downloadProgressMap[file.id].progress < 100 && (
+                              <div style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.6)", zIndex: 1, display: "flex", alignItems: "center", justifyContent: "center", backdropFilter: "blur(4px)" }}>
+                                <div style={{ display: "flex", flexDirection: "column", gap: "8px", alignItems: "center", width: "70%" }}>
+                                  <svg className="spin" viewBox="0 0 24 24" style={{ width: "24px", height: "24px", stroke: "var(--tg)", fill: "none" }}>
+                                    <circle cx="12" cy="12" r="10" strokeWidth="3" strokeDasharray="30 10" />
+                                  </svg>
+                                  <div style={{ width: "100%", height: "4px", background: "rgba(255,255,255,0.1)", borderRadius: "2px", overflow: "hidden" }}>
+                                    <div style={{ width: `${downloadProgressMap[file.id].progress}%`, height: "100%", background: "var(--tg)", transition: "width 0.3s ease" }} />
+                                  </div>
+                                  <span style={{ fontSize: "11px", fontWeight: 600 }}>{downloadProgressMap[file.id].progress}%</span>
+                                </div>
                               </div>
                             )}
                             {isVideo && (
@@ -1072,17 +949,18 @@ export default function CollectionsPage() {
             )}
           </div>
         )}
-      </div>
-    )}
-  </div>
-
-      <MediaViewer
-        isOpen={viewerOpen}
+        </div>
+      )}
+    </div>
+      
+    <MediaViewer
+      isOpen={viewerOpen}
         onClose={() => setViewerOpen(false)}
         files={viewerFiles}
         currentIndex={viewerIndex}
         onIndexChange={(idx) => setViewerIndex(idx)}
         onDelete={triggerDeleteFile}
+        onDownload={handleSingleDownload}
       />
 
       {/* CUSTOM DELETE CONFIRMATION MODAL */}
@@ -1121,22 +999,25 @@ export default function CollectionsPage() {
       )}
 
       {/* Rename Modal */}
-      {showRenameModal && (
+      {showRenameModal && itemToRename && (
         <div className="modal-overlay" onClick={() => setShowRenameModal(false)}>
           <div className="modal-box" onClick={(e) => e.stopPropagation()}>
-            <h3>Rename Collection</h3>
-            <p>Enter a new name for this collection</p>
-            <input
-              type="text"
-              value={renameValue}
-              onChange={(e) => setRenameValue(e.target.value)}
-              placeholder="Collection name"
+            <h3 style={{ margin: "0 0 16px 0", color: "#fff", display: "flex", alignItems: "center", gap: "8px" }}>
+              <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" strokeWidth="2" fill="none"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+              Rename {itemToRename.type === 'folder' ? 'Folder' : 'File'}
+            </h3>
+            <input 
+              className="teledrive-input"
+              value={newTitle}
+              onChange={e => setNewTitle(e.target.value)}
+              placeholder="Enter new name"
               autoFocus
-              onKeyDown={(e) => e.key === "Enter" && handleRenameActiveFolder()}
+              onKeyDown={e => e.key === "Enter" && handleRename()}
+              style={{ width: "100%", padding: "10px", borderRadius: "8px", border: "1px solid rgba(255,255,255,0.1)", background: "rgba(0,0,0,0.2)", color: "#fff", fontSize: "14px", marginBottom: "16px" }}
             />
-            <div className="modal-actions">
-              <button className="modal-btn-secondary" onClick={() => setShowRenameModal(false)}>Cancel</button>
-              <button className="modal-btn-primary" onClick={handleRenameActiveFolder}>Rename</button>
+            <div className="modal-actions" style={{ display: "flex", gap: "8px", justifyContent: "flex-end" }}>
+              <button className="modal-btn-secondary" onClick={() => setShowRenameModal(false)} style={{ padding: "8px 16px", cursor: "pointer", borderRadius: "8px", border: "none", background: "rgba(255,255,255,0.05)", color: "#fff" }}>Cancel</button>
+              <button className="modal-btn-primary" onClick={handleRename} style={{ padding: "8px 16px", cursor: "pointer", borderRadius: "8px", border: "none", background: "var(--tg)", color: "#fff" }}>Rename</button>
             </div>
           </div>
         </div>
@@ -1245,79 +1126,49 @@ export default function CollectionsPage() {
         </div>
       )}
 
-      {/* Bulk Download Progress Modal */}
-      {showDownloadProgress && (
-        <div className="modal-overlay" onClick={() => {
-          const allDone = downloadItems.every(item => item.status === "cached");
-          if (allDone) {
-            setShowDownloadProgress(false);
-            setSelectedFileIds([]);
-          }
-        }}>
-          <div className="modal-box" style={{ maxWidth: "480px", maxHeight: "80vh", display: "flex", flexDirection: "column" }} onClick={(e) => e.stopPropagation()}>
-            <h3>Downloading Files</h3>
-            <p style={{ fontSize: "13px", color: "var(--muted)", marginBottom: "16px" }}>
-              Files are being saved directly to your custom download directory on your machine.
-            </p>
-            
-            <div style={{ 
-              display: "flex", 
-              flexDirection: "column", 
-              gap: "14px", 
-              overflowY: "auto", 
-              maxHeight: "350px", 
-              paddingRight: "6px" 
-            }}>
-              {downloadItems.map((item) => (
-                <div key={item.id} style={{ 
-                  background: "rgba(255, 255, 255, 0.02)", 
-                  padding: "12px", 
-                  borderRadius: "10px", 
-                  border: "1px solid rgba(255, 255, 255, 0.05)" 
-                }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: "13px", marginBottom: "6px", gap: "20px" }}>
-                    <span style={{ color: "#fff", fontWeight: 600, textOverflow: "ellipsis", overflow: "hidden", whiteSpace: "nowrap" }}>
-                      {item.name}
-                    </span>
-                    <span style={{ color: item.status === "cached" ? "#3f9a4d" : "var(--tg)", fontWeight: 500, flexShrink: 0 }}>
-                      {item.status === "cached" ? "Completed" : `${item.progress}%`}
-                    </span>
-                  </div>
-                  
-                  <div style={{ 
-                    width: "100%", 
-                    height: "6px", 
-                    background: "rgba(255, 255, 255, 0.08)", 
-                    borderRadius: "3px", 
-                    overflow: "hidden" 
-                  }}>
-                    <div style={{ 
-                      width: `${item.progress}%`, 
-                      height: "100%", 
-                      background: item.status === "cached" ? "#6fce7a" : "var(--tg)", 
-                      borderRadius: "3px",
-                      transition: "width 0.3s ease" 
-                    }} />
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <div className="modal-actions" style={{ marginTop: "24px", flexShrink: 0 }}>
-              <button 
-                className="modal-btn-primary" 
-                style={{ width: "100%" }}
-                onClick={() => {
-                  setShowDownloadProgress(false);
-                  setSelectedFileIds([]);
-                }}
-              >
-                {downloadItems.every(item => item.status === "cached") ? "Done" : "Minimize & Continue in Background"}
-              </button>
-            </div>
-          </div>
-        </div>
+      <DownloadWidget 
+        showProgress={showDownloadProgress}
+        minimized={isDownloadWidgetMinimized}
+        items={downloadItems.map(item => {
+          const update = downloadProgressMap[item.id];
+          return update ? { ...item, progress: update.progress, status: update.status } : item;
+        })}
+        onClose={() => setIsDownloadWidgetMinimized(true)}
+        onMinimize={setIsDownloadWidgetMinimized}
+        onClear={() => {
+          setDownloadItems([]);
+          setIsDownloadWidgetMinimized(true);
+        }}
+      />
+      {/* Context Menu */}
+      {contextMenu && (
+        <ContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          type={contextMenu.type}
+          item={contextMenu.item}
+          onClose={() => setContextMenu(null)}
+          onDownload={(item) => {
+            if (contextMenu.type === 'file') {
+              handleSingleDownload(item.id);
+            } else {
+              showToast("Cannot download entire folders natively yet.", "info");
+            }
+          }}
+          onRename={(item) => openRenameModal(contextMenu.type, item)}
+          onMove={() => {
+             showToast("Please use Drag & Drop to move items.", "info");
+          }}
+          onDelete={(item) => {
+            if (contextMenu.type === 'folder') {
+              setDeleteTarget({ type: "folder", id: contextMenu.item.id, name: contextMenu.item.name });
+            } else {
+              setDeleteTarget({ type: "file", id: contextMenu.item.id, name: contextMenu.item.file_name });
+            }
+          }}
+        />
       )}
+
       <Footer />
     </>
   );

@@ -23,6 +23,8 @@ interface AuthContextType {
   changeAccentColor: (color: "blue" | "violet" | "orange") => void;
   activeUploads: Array<{ id: string; file_name: string; progress: number; status: string }>;
   clearCompleted: () => void;
+  downloadProgressMap: Record<string, { progress: number, status: string }>;
+  refreshUploads: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -41,6 +43,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [accentColor, setAccentColor] = useState<"blue" | "violet" | "orange">("blue");
 
   const [activeUploads, setActiveUploads] = useState<Array<{ id: string; file_name: string; progress: number; status: string }>>([]);
+  const [downloadProgressMap, setDownloadProgressMap] = useState<Record<string, { progress: number, status: string }>>({});
+
+  const refreshUploads = async () => {
+    if (!phoneNumber) return;
+    try {
+      const data = await getUploadProgress(phoneNumber);
+      setActiveUploads(data);
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   const clearCompleted = async () => {
     if (!phoneNumber) return;
@@ -52,41 +65,67 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  // Poll upload progress globally with self-throttling
+  // WebSocket connection for real-time progress
   useEffect(() => {
     if (!isLoggedIn || !phoneNumber || backendOnline !== true) {
       setActiveUploads([]);
       return;
     }
 
-    let active = true;
-    let timer: NodeJS.Timeout;
+    refreshUploads();
 
-    const fetchUploadProgress = async () => {
-      try {
-        const data = await getUploadProgress(phoneNumber);
-        if (!active) return;
-        
-        setActiveUploads(data);
+    const wsUrl = BACKEND_URL.replace("http://", "ws://").replace("https://", "wss://");
+    let ws: WebSocket;
+    let reconnectTimer: NodeJS.Timeout;
 
-        // If there are pending/running uploads, poll fast (2s). Otherwise, poll slow (15s).
-        const hasActive = data.some(up => up.status === "pending" || up.status === "uploading");
-        const nextDelay = hasActive ? 2000 : 15000;
-
-        timer = setTimeout(fetchUploadProgress, nextDelay);
-      } catch (err) {
-        console.error("Failed to fetch global upload progress:", err);
-        if (active) {
-          timer = setTimeout(fetchUploadProgress, 15000);
+    const connect = () => {
+      ws = new WebSocket(`${wsUrl}/ws/${phoneNumber}`);
+      
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          if (data.type === "upload_progress") {
+            setActiveUploads(prev => {
+              const existing = prev.find(u => u.id === data.id);
+              if (existing) {
+                return prev.map(u => u.id === data.id ? { ...u, progress: data.progress, status: data.status } : u);
+              } else {
+                refreshUploads();
+                return prev;
+              }
+            });
+          } else if (data.type === "download_progress") {
+            setDownloadProgressMap(prev => {
+              const existing = prev[data.id];
+              // Don't go backwards in progress, and don't un-cache if it's already cached
+              if (existing) {
+                if (existing.status === "cached") return prev;
+                if (data.progress < existing.progress && data.status !== "cached") return prev;
+              }
+              return {
+                ...prev,
+                [data.id]: { progress: data.progress, status: data.status }
+              };
+            });
+          }
+        } catch (err) {
+          console.error("WS error", err);
         }
-      }
+      };
+
+      ws.onclose = () => {
+        reconnectTimer = setTimeout(connect, 3000);
+      };
     };
 
-    fetchUploadProgress();
+    connect();
 
     return () => {
-      active = false;
-      clearTimeout(timer);
+      clearTimeout(reconnectTimer);
+      if (ws) {
+        ws.onclose = null;
+        ws.close();
+      }
     };
   }, [isLoggedIn, phoneNumber, backendOnline]);
 
@@ -253,7 +292,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       accentColor,
       changeAccentColor,
       activeUploads,
-      clearCompleted
+      clearCompleted,
+      downloadProgressMap,
+      refreshUploads
     }}>
       {children}
 

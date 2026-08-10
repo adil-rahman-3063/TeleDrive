@@ -27,9 +27,16 @@ async def bg_telegram_upload(upload_id: str, user_id: str, folder_id: Optional[s
                 pass
 
         # Progress tracking callback updating SQLite table
-        def progress_callback(current, total):
+        async def progress_callback(current, total):
             percent = min(99, int((current / total) * 100))
             execute_db("UPDATE uploads SET progress = ? WHERE id = ?", (percent, upload_id))
+            from routes.ws import manager
+            await manager.broadcast_to_user(user_id, {
+                "type": "upload_progress",
+                "id": upload_id,
+                "progress": percent,
+                "status": "uploading"
+            })
 
         try:
             msg = await client.send_file(
@@ -56,9 +63,26 @@ async def bg_telegram_upload(upload_id: str, user_id: str, folder_id: Optional[s
 
         # Update status to completed
         execute_db("UPDATE uploads SET progress = 100, status = 'completed' WHERE id = ?", (upload_id,))
+        from routes.ws import manager
+        await manager.broadcast_to_user(user_id, {
+            "type": "upload_progress",
+            "id": upload_id,
+            "progress": 100,
+            "status": "completed"
+        })
     except Exception as err:
         print("BG Upload failed:", err)
         execute_db("UPDATE uploads SET status = 'failed' WHERE id = ?", (upload_id,))
+        from routes.ws import manager
+        try:
+            await manager.broadcast_to_user(user_id, {
+                "type": "upload_progress",
+                "id": upload_id,
+                "progress": 0,
+                "status": "failed"
+            })
+        except Exception:
+            pass
     finally:
         # Delete temporary file from local server
         if os.path.exists(temp_path):

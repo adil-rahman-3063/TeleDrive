@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 # Import all routes
-from routes import upload, files, folders, auth
+from routes import upload, files, folders, auth, ws
 
 app = FastAPI(title="TeleDrive API")
 
@@ -88,3 +88,4 @@ app.include_router(auth.router)
 app.include_router(upload.router)
 app.include_router(files.router)
 app.include_router(folders.router)
+app.include_router(ws.router)

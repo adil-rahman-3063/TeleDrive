@@ -72,7 +72,11 @@ export default function SettingsPage() {
       const res = await selectDirectory();
       if (res.status === "success" && res.path) {
         setDownloadPathInput(res.path);
-        showToast(`Folder selected: ${res.path}`, "success");
+        if (phoneNumber) {
+          await setDownloadPath(phoneNumber, res.path);
+          fetchStats(); // Update stats
+        }
+        showToast(`Folder selected and saved: ${res.path}`, "success");
       } else if (res.status === "cancelled") {
         showToast("Folder selection cancelled.", "warning");
       }

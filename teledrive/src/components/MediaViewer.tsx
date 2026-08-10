@@ -20,6 +20,7 @@ interface MediaViewerProps {
   currentIndex: number;
   onIndexChange: (idx: number) => void;
   onDelete?: (idx: number) => void;
+  onDownload?: (fileId: string) => void;
 }
 
 export default function MediaViewer({
@@ -29,6 +30,7 @@ export default function MediaViewer({
   currentIndex,
   onIndexChange,
   onDelete,
+  onDownload,
 }: MediaViewerProps) {
   const [progressInfo, setProgressInfo] = useState<{ progress: number; status: string } | null>(null);
 
@@ -88,9 +90,11 @@ export default function MediaViewer({
   if (!isOpen || files.length === 0) return null;
 
   const handleDownload = () => {
-    if (currentFile.url) {
+    if (onDownload && currentFile.id) {
+      onDownload(currentFile.id);
+    } else if (currentFile.url) {
       fetch(currentFile.url).catch(() => {});
-      showToast("Download started on local server disk...", "info");
+      showToast("Download started to your configured storage folder...", "info");
     }
   };
 

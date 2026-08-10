@@ -4,6 +4,7 @@ from fastapi import BackgroundTasks
 import os
 import uuid
 import datetime
+import asyncio
 from database import fetch_all, fetch_one, execute_db, insert_db
 from telegram_client import get_client, get_client_and_connect
 
@@ -34,21 +35,51 @@ def get_files(user_id: str, folder_id: str):
         
     return data
 
+import asyncio
+
+active_priority_downloads = 0
+
 # 🔥 Download file using file_id (Range-compliant streaming + inline write-through caching)
 @router.get("/download/{user_id}/{file_id}")
 async def download_file(user_id: str, file_id: str, request: Request):
+    global active_priority_downloads
+    is_priority = request.query_params.get("priority") == "1"
+    
     record = fetch_one("SELECT * FROM files WHERE id = ?", (file_id,))
     if not record:
         raise HTTPException(status_code=404, detail="File not found")
 
     user_record = fetch_one("SELECT download_path FROM users WHERE phone = ?", (user_id,))
     custom_path = user_record.get("download_path") if user_record else None
-    CACHE_DIR = custom_path if custom_path else "local_cache"
-
-    cache_filename = f"{file_id}_{record['file_name']}"
+    
+    force_download = request.query_params.get("download") == "1"
+    
+    # Explicit downloads go to custom path, background caching goes to local_cache
+    if force_download and custom_path:
+        CACHE_DIR = custom_path
+        cache_filename = record['file_name']
+    else:
+        CACHE_DIR = "local_cache"
+        cache_filename = f"{file_id}_{record['file_name']}"
     cache_path = os.path.join(CACHE_DIR, cache_filename)
 
+    if force_download and custom_path:
+        local_cache_path = os.path.join("local_cache", f"{file_id}_{record['file_name']}")
+        if not os.path.exists(cache_path) and os.path.exists(local_cache_path):
+            if os.path.getsize(local_cache_path) == record["size"]:
+                import shutil
+                os.makedirs(CACHE_DIR, exist_ok=True)
+                shutil.copy2(local_cache_path, cache_path)
+
     if os.path.exists(cache_path):
+        # Broadcast that it's already done so UI doesn't get stuck at 0%
+        from routes.ws import manager
+        asyncio.create_task(manager.broadcast_to_user(user_id, {
+            "type": "download_progress",
+            "id": file_id,
+            "progress": 100,
+            "status": "cached"
+        }))
         return FileResponse(cache_path)
 
     message_id = record["tg_message_id"]
@@ -89,6 +120,10 @@ async def download_file(user_id: str, file_id: str, request: Request):
     content_length = end_byte - start_byte + 1
 
     async def stream_generator():
+        global active_priority_downloads
+        if is_priority:
+            active_priority_downloads += 1
+            
         tmp_path = cache_path + ".tmp"
         os.makedirs(os.path.dirname(cache_path), exist_ok=True)
 
@@ -103,22 +138,51 @@ async def download_file(user_id: str, file_id: str, request: Request):
                 should_cache = False
 
         try:
+            downloaded_bytes = 0
+            last_progress = 0
             async for chunk in client.iter_download(
                 message.media,
                 offset=start_byte,
                 request_size=512 * 1024, # 512KB chunks for direct streaming throughput
                 limit=content_length
             ):
+                if not is_priority:
+                    while active_priority_downloads > 0:
+                        await asyncio.sleep(0.5)
+                        
                 if should_cache and f:
                     f.write(chunk)
+                
+                downloaded_bytes += len(chunk)
+                if should_cache and total_size > 0:
+                    progress = min(99, int((downloaded_bytes / total_size) * 100))
+                    if progress > last_progress:
+                        last_progress = progress
+                        from routes.ws import manager
+                        asyncio.create_task(manager.broadcast_to_user(user_id, {
+                            "type": "download_progress",
+                            "id": file_id,
+                            "progress": progress,
+                            "status": "downloading"
+                        }))
                 yield chunk
         finally:
+            if is_priority:
+                active_priority_downloads -= 1
+                
             if f:
                 f.close()
             if should_cache and os.path.exists(tmp_path):
                 if os.path.getsize(tmp_path) == total_size:
                     try:
                         os.rename(tmp_path, cache_path)
+                        from routes.ws import manager
+                        asyncio.create_task(manager.broadcast_to_user(user_id, {
+                            "type": "download_progress",
+                            "id": file_id,
+                            "progress": 100,
+                            "status": "cached"
+                        }))
                     except Exception as e:
                         print("Failed to save cached file:", e)
                 else:
@@ -127,11 +191,14 @@ async def download_file(user_id: str, file_id: str, request: Request):
                     except Exception:
                         pass
 
+    force_download = request.query_params.get("download") == "1"
+    disposition = "attachment" if force_download else "inline"
+
     headers = {
         "Accept-Ranges": "bytes",
         "Content-Length": str(content_length),
         "Content-Type": record["mime_type"] or "application/octet-stream",
-        "Content-Disposition": f'inline; filename="{record["file_name"]}"'
+        "Content-Disposition": f'{disposition}; filename="{record["file_name"]}"'
     }
     if range_header:
         headers["Content-Range"] = f"bytes {start_byte}-{end_byte}/{total_size}"
@@ -326,21 +393,27 @@ def get_download_progress(file_id: str):
         user_id = record["user_id"]
         user_record = fetch_one("SELECT download_path FROM users WHERE phone = ?", (user_id,))
         custom_path = user_record.get("download_path") if user_record else None
-        CACHE_DIR = custom_path if custom_path else "local_cache"
-
-        cache_filename = f"{file_id}_{record['file_name']}"
-        cache_path = os.path.join(CACHE_DIR, cache_filename)
-        tmp_path = cache_path + ".tmp"
-
-        if os.path.exists(cache_path):
-            return {"progress": 100, "status": "cached"}
+        
+        cache_filename_cache = f"{file_id}_{record['file_name']}"
+        cache_filename_custom = record['file_name']
+        
+        paths_to_check = [("local_cache", cache_filename_cache)]
+        if custom_path:
+            paths_to_check.append((custom_path, cache_filename_custom))
             
-        if os.path.exists(tmp_path):
-            current_size = os.path.getsize(tmp_path)
-            total_size = record["file_size"] or 1
-            progress = min(99, int((current_size / total_size) * 100))
-            return {"progress": progress, "status": "downloading"}
+        for d, fname in paths_to_check:
+            cache_path = os.path.join(d, fname)
+            tmp_path = cache_path + ".tmp"
             
+            if os.path.exists(cache_path):
+                return {"progress": 100, "status": "cached"}
+                
+            if os.path.exists(tmp_path):
+                current_size = os.path.getsize(tmp_path)
+                total_size = record["file_size"] or 1
+                progress = min(99, int((current_size / total_size) * 100))
+                return {"progress": progress, "status": "downloading"}
+                
         return {"progress": 0, "status": "not_started"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

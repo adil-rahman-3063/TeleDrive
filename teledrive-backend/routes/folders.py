@@ -37,6 +37,13 @@ def get_folder_thumbnail(user_id: str, folder_id: int) -> str:
     )
     return img_record["id"] if img_record else None
 
+# 🔥 Get a single folder by ID
+@router.get("/folder/{user_id}/{folder_id}")
+def get_folder(user_id: str, folder_id: str):
+    folder = fetch_one("SELECT * FROM folders WHERE user_id = ? AND id = ?", (user_id, folder_id))
+    if not folder:
+        raise HTTPException(status_code=404, detail="Folder not found")
+    return folder
 
 # 🔥 Get root folders (active only)
 @router.get("/folders/{user_id}")

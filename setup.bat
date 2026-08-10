@@ -82,12 +82,12 @@ echo.
 echo  ╔══════════════════════════════════════════╗
 echo  ║           Setup complete!                ║
 echo  ╠══════════════════════════════════════════╣
-echo  ║                                          ║
-echo  ║  1. Start the app:                       ║
-echo  ║     cd teledrive ^&^& npm run dev          ║
-echo  ║                                          ║
-echo  ║  2. Open http://localhost:3000            ║
+echo  ║  You can now use start.bat to launch!  ║
 echo  ║                                          ║
 echo  ╚══════════════════════════════════════════╝
 echo.
+set /p LAUNCH="Do you want to launch TeleDrive now? (Y/N): "
+if /i "%LAUNCH%"=="Y" (
+    start.bat
+)
 pause

@@ -78,11 +78,12 @@ echo ""
 echo "  ╔══════════════════════════════════════════╗"
 echo "  ║           Setup complete!                ║"
 echo "  ╠══════════════════════════════════════════╣"
-echo "  ║                                          ║"
-echo "  ║  1. Start the app:                       ║"
-echo "  ║     cd teledrive && npm run dev           ║"
-echo "  ║                                          ║"
-echo "  ║  2. Open http://localhost:3000            ║"
+echo "  ║  You can now use start.sh to launch!     ║"
 echo "  ║                                          ║"
 echo "  ╚══════════════════════════════════════════╝"
 echo ""
+read -p "Do you want to launch TeleDrive now? (Y/n): " LAUNCH
+if [[ "$LAUNCH" == "Y" || "$LAUNCH" == "y" || -z "$LAUNCH" ]]; then
+    chmod +x start.sh
+    ./start.sh
+fi

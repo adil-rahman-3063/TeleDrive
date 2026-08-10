@@ -32,20 +32,17 @@ echo "  --- Setting up backend ---"
 cd teledrive-backend
 
 if [ ! -f .env ]; then
-    if [ -f .env.example ]; then
-        cp .env.example .env
-        echo "  [OK] Created .env from .env.example"
-        echo ""
-        echo "  ┌──────────────────────────────────────────┐"
-        echo "  │  IMPORTANT: Edit teledrive-backend/.env  │"
-        echo "  │  and add your Telegram API credentials.  │"
-        echo "  │                                          │"
-        echo "  │  Get them at: https://my.telegram.org    │"
-        echo "  └──────────────────────────────────────────┘"
-        echo ""
-    else
-        echo "  [WARN] No .env.example found. Create .env manually."
-    fi
+    echo "  ┌──────────────────────────────────────────┐"
+    echo "  │  Telegram API Credentials Setup          │"
+    echo "  │  Get them at: https://my.telegram.org    │"
+    echo "  └──────────────────────────────────────────┘"
+    echo ""
+    read -p "  Enter your API_ID: " API_ID
+    read -p "  Enter your API_HASH: " API_HASH
+    
+    echo "API_ID=$API_ID" > .env
+    echo "API_HASH=$API_HASH" >> .env
+    echo "  [OK] Credentials saved to .env"
 else
     echo "  [OK] .env already exists"
 fi
@@ -82,13 +79,10 @@ echo "  ╔═══════════════════════
 echo "  ║           Setup complete!                ║"
 echo "  ╠══════════════════════════════════════════╣"
 echo "  ║                                          ║"
-echo "  ║  1. Edit teledrive-backend/.env with     ║"
-echo "  ║     your Telegram API_ID and API_HASH    ║"
-echo "  ║                                          ║"
-echo "  ║  2. Start the app:                       ║"
+echo "  ║  1. Start the app:                       ║"
 echo "  ║     cd teledrive && npm run dev           ║"
 echo "  ║                                          ║"
-echo "  ║  3. Open http://localhost:3000            ║"
+echo "  ║  2. Open http://localhost:3000            ║"
 echo "  ║                                          ║"
 echo "  ╚══════════════════════════════════════════╝"
 echo ""

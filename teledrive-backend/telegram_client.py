@@ -1,6 +1,8 @@
 from telethon import TelegramClient
 from config import API_ID, API_HASH
 
+import os
+
 _clients = {}
 
 def normalize_phone(phone: str) -> str:
@@ -10,6 +12,7 @@ def normalize_phone(phone: str) -> str:
 def get_client(user_id: str):
     user_id = normalize_phone(user_id)
     if user_id not in _clients:
+        os.makedirs("sessions", exist_ok=True)
         _clients[user_id] = TelegramClient(f"sessions/{user_id}", API_ID, API_HASH)
     return _clients[user_id]
 

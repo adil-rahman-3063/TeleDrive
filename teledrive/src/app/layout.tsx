@@ -20,6 +20,7 @@ export const metadata: Metadata = {
 import { AuthProvider } from "@/hooks/useAuth";
 import { ToastProvider } from "@/components/Toast";
 import BackendSplash from "@/components/BackendSplash";
+import Script from "next/script";
 
 export default function RootLayout({
   children,
@@ -40,6 +41,15 @@ export default function RootLayout({
             </div>
           </ToastProvider>
         </AuthProvider>
+        <Script src="https://www.googletagmanager.com/gtag/js?id=G-9BERHTPL4Q" strategy="afterInteractive" />
+        <Script id="google-analytics" strategy="afterInteractive">
+          {`
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+            gtag('config', 'G-9BERHTPL4Q');
+          `}
+        </Script>
       </body>
     </html>
   );

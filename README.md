@@ -21,7 +21,7 @@ Upload, organize, and stream your photos, videos, and files — backed by Telegr
       <td>
         <div align="center">
           <h3>📣 Latest Update</h3>
-          <p>Fixed <code>setup.bat</code> pip cache issue and improved Windows terminal output characters. <i>(August 11, 2026)</i></p>
+          <p>Fixed Windows <code>start.bat</code> to properly manage background backend processes and updated UI footer. <i>(August 11, 2026)</i></p>
         </div>
       </td>
     </tr>

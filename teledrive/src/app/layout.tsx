@@ -41,13 +41,13 @@ export default function RootLayout({
             </div>
           </ToastProvider>
         </AuthProvider>
-        <Script src="https://www.googletagmanager.com/gtag/js?id=G-9BERHTPL4Q" strategy="afterInteractive" />
+        <Script src="https://www.googletagmanager.com/gtag/js?id=G-CDWJFLLVYP" strategy="afterInteractive" />
         <Script id="google-analytics" strategy="afterInteractive">
           {`
             window.dataLayer = window.dataLayer || [];
             function gtag(){dataLayer.push(arguments);}
             gtag('js', new Date());
-            gtag('config', 'G-9BERHTPL4Q');
+            gtag('config', 'G-CDWJFLLVYP');
           `}
         </Script>
       </body>

@@ -2,9 +2,9 @@
 setlocal enabledelayedexpansion
 
 echo.
-echo  ╔══════════════════════════════════════════╗
-echo  ║         TeleDrive Setup (Windows)        ║
-echo  ╚══════════════════════════════════════════╝
+echo  ============================================
+echo  =         TeleDrive Setup (Windows)        =
+echo  ============================================
 echo.
 
 :: ─── Check Python ───
@@ -36,10 +36,10 @@ echo  --- Setting up backend ---
 cd teledrive-backend
 
 if not exist .env (
-    echo  ┌──────────────────────────────────────────┐
-    echo  │  Telegram API Credentials Setup          │
-    echo  │  Get them at: https://my.telegram.org    │
-    echo  └──────────────────────────────────────────┘
+    echo  --------------------------------------------
+    echo     Telegram API Credentials Setup           
+    echo     Get them at: https://my.telegram.org     
+    echo  --------------------------------------------
     echo.
     set /p API_ID="Enter your API_ID: "
     set /p API_HASH="Enter your API_HASH: "
@@ -60,7 +60,7 @@ if not exist .venv (
 )
 
 echo  [..] Installing Python dependencies...
-.venv\Scripts\pip install -r requirements.txt --quiet
+.venv\Scripts\pip install --no-cache-dir -r requirements.txt --quiet
 echo  [OK] Python dependencies installed
 
 cd ..
@@ -79,12 +79,12 @@ cd ..
 
 :: ─── Done ───
 echo.
-echo  ╔══════════════════════════════════════════╗
-echo  ║           Setup complete!                ║
-echo  ╠══════════════════════════════════════════╣
-echo  ║  You can now use start.bat to launch!  ║
-echo  ║                                          ║
-echo  ╚══════════════════════════════════════════╝
+echo  ============================================
+echo             Setup complete!                
+echo  ============================================
+echo     You can now use start.bat to launch!   
+echo                                            
+echo  ============================================
 echo.
 set /p LAUNCH="Do you want to launch TeleDrive now? (Y/N): "
 if /i "%LAUNCH%"=="Y" (

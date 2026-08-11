@@ -21,7 +21,13 @@ Upload, organize, and stream your photos, videos, and files — backed by Telegr
       <td>
         <div align="center">
           <h3>📣 Latest Update</h3>
-          <p>Fixed Windows <code>start.bat</code> to properly manage background backend processes, resolved a missing Telegram sessions directory bug during fresh installations, and added Google Analytics tracking. <i>(August 11, 2026)</i></p>
+          <ul align="left">
+            <li>Fixed <code>setup.bat</code> pip cache issue and improved Windows terminal output characters.</li>
+            <li>Fixed Windows <code>start.bat</code> to properly manage background backend processes.</li>
+            <li>Resolved a missing Telegram sessions directory bug during fresh installations.</li>
+            <li>Added Google Analytics tracking and moved version to UI footer.</li>
+          </ul>
+          <p><i>(August 11, 2026)</i></p>
         </div>
       </td>
     </tr>

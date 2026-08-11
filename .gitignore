@@ -21,3 +21,6 @@ teledrive-backend/.env
 .DS_Store
 Thumbs.db
 *.log
+
+# Website
+teledrive-website/

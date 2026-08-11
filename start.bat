@@ -1,5 +1,7 @@
 @echo off
 cd teledrive
-echo Starting TeleDrive...
-npm run dev
+echo Building TeleDrive for production...
+call npm run build
+echo Starting TeleDrive production server...
+npm start
 pause

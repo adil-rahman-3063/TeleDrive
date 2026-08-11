@@ -13,6 +13,21 @@ Upload, organize, and stream your photos, videos, and files — backed by Telegr
 
 </div>
 
+<br />
+
+<div align="center">
+  <table>
+    <tr>
+      <td>
+        <div align="center">
+          <h3>📣 Latest Update</h3>
+          <p>Fixed <code>setup.bat</code> pip cache issue and improved Windows terminal output characters. <i>(August 11, 2026)</i></p>
+        </div>
+      </td>
+    </tr>
+  </table>
+</div>
+
 ---
 
 ## ✨ Features

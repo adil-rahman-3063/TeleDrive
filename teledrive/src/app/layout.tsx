@@ -38,6 +38,9 @@ export default function RootLayout({
             <div className="shell">
               {children}
             </div>
+            <div className="fixed bottom-4 right-4 bg-black/50 text-white/70 px-2 py-1 rounded-md text-xs font-mono backdrop-blur-sm z-50 border border-white/10 pointer-events-none">
+              v1.1
+            </div>
           </ToastProvider>
         </AuthProvider>
       </body>
